@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Send } from 'lucide-react';
+import { ArrowRight, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,8 +9,37 @@ import { supabase } from '@/integrations/supabase/client';
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Fetch campaign recommendations on component mount
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      setIsLoadingRecommendations(true);
+      try {
+        const { data, error } = await supabase
+          .from('campaign_recommendations')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          setRecommendations(data);
+        }
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+    
+    fetchRecommendations();
+  }, []);
 
   const handleAnalyzeWebsite = async () => {
     if (!websiteUrl) {
@@ -107,6 +136,45 @@ const Home = () => {
             >
               <Send className="h-5 w-5" />
             </button>
+          </div>
+          
+          {/* Campaign Recommendation Buttons */}
+          <div className="flex flex-wrap gap-3 justify-center">
+            {isLoadingRecommendations ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-marketing-purple" />
+              </div>
+            ) : recommendations.length > 0 ? (
+              // Show unique recommendations by platform
+              Array.from(new Set(recommendations.map(rec => rec.title)))
+                .slice(0, 4) // Limit to 4 buttons for UI
+                .map((title, index) => (
+                  <button
+                    key={index}
+                    className={`px-6 py-3 rounded-lg text-sm md:text-base font-medium whitespace-nowrap
+                      ${index === 0 ? "bg-marketing-purple text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    {title}
+                  </button>
+                ))
+            ) : (
+              // Default buttons if no recommendations available
+              <>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  <Plus className="h-4 w-4 inline mr-2" />
+                  New Chat
+                </button>
+                <button className="px-6 py-3 rounded-lg bg-marketing-purple text-white text-sm md:text-base font-medium whitespace-nowrap">
+                  Social Media
+                </button>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  Blog Content
+                </button>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  Email Marketing
+                </button>
+              </>
+            )}
           </div>
         </div>
         
