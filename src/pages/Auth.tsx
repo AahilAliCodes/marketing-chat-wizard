@@ -136,7 +136,7 @@ const Auth = () => {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
-                      </Control>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
