@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -30,6 +31,8 @@ const Dashboard = () => {
       setIsAnalyzing(true);
       
       const analyzeWebsite = async () => {
+        const startTime = Date.now();
+        
         try {
           // Call the Supabase Edge Function
           const { data, error } = await supabase.functions.invoke('analyze-website', {
@@ -46,11 +49,21 @@ const Dashboard = () => {
             description: 'Website has been analyzed and recommendations generated',
           });
           
-        } catch (error) {
+        } catch (error: any) {
           console.error('Analysis error:', error);
+          
+          // Provide specific feedback based on the error
+          let errorMessage = 'Failed to analyze website';
+          
+          if (error.message?.includes('OpenAI API key is not configured')) {
+            errorMessage = 'OpenAI API key is not configured in the server. This is a demo limitation.';
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+          
           toast({
             title: 'Analysis Failed',
-            description: error instanceof Error ? error.message : 'Failed to analyze website',
+            description: errorMessage,
             variant: 'destructive',
           });
         } finally {
@@ -63,7 +76,6 @@ const Dashboard = () => {
         }
       };
       
-      const startTime = Date.now();
       analyzeWebsite();
     } else {
       // Simulate loading time if not analyzing
