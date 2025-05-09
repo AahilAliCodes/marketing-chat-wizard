@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
@@ -96,17 +95,16 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       const userChannels = await getUserChannels();
       
       if (userChannels && userChannels.length > 0) {
-        // Load the first channel with its messages
-        const fullChannel = await getFullChannel(userChannels[0].id);
+        // Load all user channels with their messages
+        const userChannelsWithMessages = await Promise.all(
+          userChannels.map(async (channel) => await getFullChannel(channel.id))
+        );
         
-        // Create a new array with the user's saved channels + default channels
-        const updatedChannels = [...defaultChannels];
+        // Combine user channels with default channels
+        setChannels([...userChannelsWithMessages, ...defaultChannels]);
         
-        // Add the first channel with full messages
-        updatedChannels.unshift(fullChannel);
-        
-        setChannels(updatedChannels);
-        setActiveChannel(fullChannel.id);
+        // Set the first user channel as active
+        setActiveChannel(userChannelsWithMessages[0].id);
       }
     } catch (error) {
       console.error('Error loading user channels:', error);

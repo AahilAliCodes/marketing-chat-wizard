@@ -53,9 +53,16 @@ export const saveChatChannel = async (channel: ChannelType) => {
 };
 
 export const getUserChannels = async () => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    throw new Error('User not authenticated');
+  }
+
   const { data: channels, error } = await supabase
     .from('user_chat_channels')
     .select('*')
+    .eq('user_id', userData.user.id)
     .order('updated_at', { ascending: false });
 
   if (error) {

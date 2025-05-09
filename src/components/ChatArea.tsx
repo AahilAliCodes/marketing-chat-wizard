@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { useChat } from '@/context/ChatContext';
 import { useAuth } from '@/context/AuthContext';
@@ -43,7 +42,8 @@ const ChatArea = () => {
     setActiveChannel, 
     saveCurrentChannel,
     createNewChannel,
-    isLoading 
+    isLoading,
+    loadUserChannels 
   } = useChat();
   const { user, signIn, signUp } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,7 +87,11 @@ const ChatArea = () => {
       return;
     }
 
-    await saveCurrentChannel();
+    const channelId = await saveCurrentChannel();
+    if (channelId) {
+      // Refresh user channels to show the newly saved one
+      await loadUserChannels();
+    }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -137,6 +141,7 @@ const ChatArea = () => {
               channel={channel}
               isActive={channel.id === activeChannel}
               onClick={() => setActiveChannel(channel.id)}
+              isSaved={channel.id.startsWith("channel-") ? false : true} // Add visual indicator for saved channels
             />
           ))}
         </div>
@@ -272,7 +277,7 @@ const ChatArea = () => {
           disabled={isLoading}
         >
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Save Chat
+          {user ? "Save Chat" : "Sign in to Save"}
         </Button>
         
         <Button 
