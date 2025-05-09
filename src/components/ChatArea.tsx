@@ -5,7 +5,7 @@ import ChannelButton from './ChannelButton';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { Button } from './ui/button';
-import { Save } from 'lucide-react';
+import { Save, Send } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,11 @@ const ChatArea = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentChannel?.messages]);
+
+  const handleSendChat = () => {
+    console.log("Sending chat transcript...");
+    // This would typically connect to an email service or sharing functionality
+  };
 
   return (
     <div className="flex flex-col h-screen flex-1">
@@ -51,7 +56,7 @@ const ChatArea = () => {
       
       <ChatInput />
 
-      <div className="border-t p-3 bg-white flex justify-center">
+      <div className="border-t p-3 bg-white flex justify-center space-x-2">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="text-marketing-purple hover:bg-marketing-purple/10">
@@ -94,6 +99,16 @@ const ChatArea = () => {
             </div>
           </DialogContent>
         </Dialog>
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="bg-marketing-purple text-white hover:bg-marketing-purple/90"
+          onClick={handleSendChat}
+        >
+          <Send className="mr-2 h-4 w-4" />
+          Send Chat
+        </Button>
       </div>
     </div>
   );
