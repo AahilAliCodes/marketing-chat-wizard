@@ -35,26 +35,18 @@ const Dashboard = () => {
         
         try {
           // First check if this website has already been analyzed
-          const { data: existingAnalysis, error: analysisError } = await supabase
+          const { data: existingAnalysis } = await supabase
             .from('website_analyses')
             .select('*')
             .eq('website_url', state.websiteUrl)
-            .maybeSingle();
-          
-          if (analysisError) {
-            console.error('Error checking for existing analysis:', analysisError);
-          }
+            .single();
           
           if (existingAnalysis) {
             // Website already exists in the database, fetch recommendations
-            const { data: existingRecommendations, error: recommendationsError } = await supabase
+            const { data: existingRecommendations } = await supabase
               .from('campaign_recommendations')
               .select('*')
               .eq('website_url', state.websiteUrl);
-            
-            if (recommendationsError) {
-              console.error('Error fetching existing recommendations:', recommendationsError);
-            }
             
             // Show success toast with indication that existing data was used
             toast({
