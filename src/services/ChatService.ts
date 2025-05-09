@@ -3,12 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChannelType, MessageType } from "@/context/ChatContext";
 
 export const saveChatChannel = async (channel: ChannelType) => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    throw new Error('User not authenticated');
+  }
+
   // First, create or update the channel
   const { data: channelData, error: channelError } = await supabase
     .from('user_chat_channels')
     .upsert({
+      id: channel.id,
       name: channel.name,
-      description: channel.description
+      description: channel.description,
+      user_id: userData.user.id
     }, {
       onConflict: 'id'
     })
@@ -27,7 +35,7 @@ export const saveChatChannel = async (channel: ChannelType) => {
     channel_id: channelId,
     content: msg.content,
     role: msg.role,
-    created_at: msg.timestamp
+    created_at: msg.timestamp.toISOString()
   }));
 
   if (messagesForInsert.length > 0) {
