@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, PieChart, LogOut, User, LogIn } from 'lucide-react';
+import { Home, PieChart, LogOut, User, LogIn, LayoutDashboard } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '@/context/AuthContext';
 
@@ -48,6 +48,21 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
           >
             <Home className="h-5 w-5 md:mr-2" />
             <span className="hidden md:inline">Home</span>
+          </Button>
+          <Button
+            onClick={() => {
+              setActiveItem('dashboard');
+              navigate('/dashboard');
+            }}
+            variant="ghost"
+            className={`w-full justify-start mb-1 ${
+              activeItem === 'dashboard'
+                ? 'bg-white/10 text-white'
+                : 'text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Dashboard</span>
           </Button>
           <Button
             onClick={() => {
