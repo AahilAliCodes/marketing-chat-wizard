@@ -1,49 +1,44 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Send, Plus } from 'lucide-react';
+import { ArrowRight, Send, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-interface CampaignRecommendation {
-  id: string;
-  title: string;
-}
-
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [recommendationTitles, setRecommendationTitles] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Fetch campaign recommendations on component mount
   useEffect(() => {
-    // Fetch unique campaign recommendation titles when component mounts
-    const fetchRecommendationTitles = async () => {
+    const fetchRecommendations = async () => {
+      setIsLoadingRecommendations(true);
       try {
         const { data, error } = await supabase
           .from('campaign_recommendations')
-          .select('title')
-          .limit(20);
-          
+          .select('*')
+          .order('created_at', { ascending: false });
+        
         if (error) {
-          console.error('Error fetching recommendations:', error);
-          return;
+          throw error;
         }
         
         if (data && data.length > 0) {
-          // Get unique titles
-          const titles = Array.from(new Set(data.map(rec => rec.title)));
-          // Limit to 3-4 titles for display
-          setRecommendationTitles(titles.slice(0, 4));
+          setRecommendations(data);
         }
-      } catch (err) {
-        console.error('Failed to fetch recommendation titles:', err);
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      } finally {
+        setIsLoadingRecommendations(false);
       }
     };
     
-    fetchRecommendationTitles();
+    fetchRecommendations();
   }, []);
 
   const handleAnalyzeWebsite = async () => {
@@ -143,26 +138,43 @@ const Home = () => {
             </button>
           </div>
           
+          {/* Campaign Recommendation Buttons */}
           <div className="flex flex-wrap gap-3 justify-center">
-            <Button
-              variant="outline"
-              className="border-dashed border-gray-300 text-gray-500 hover:text-marketing-purple hover:border-marketing-purple"
-              onClick={() => setWebsiteUrl('')}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              New Chat
-            </Button>
-            
-            {recommendationTitles.map((title, index) => (
-              <Button
-                key={index}
-                variant={index % 2 === 0 ? "default" : "outline"}
-                className={index % 2 === 0 ? "bg-marketing-purple hover:bg-marketing-purple/90" : "border-marketing-purple text-marketing-purple hover:bg-marketing-purple/10"}
-                onClick={() => navigate('/dashboard')}
-              >
-                {title}
-              </Button>
-            ))}
+            {isLoadingRecommendations ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-marketing-purple" />
+              </div>
+            ) : recommendations.length > 0 ? (
+              // Show unique recommendations by platform
+              Array.from(new Set(recommendations.map(rec => rec.title)))
+                .slice(0, 4) // Limit to 4 buttons for UI
+                .map((title, index) => (
+                  <button
+                    key={index}
+                    className={`px-6 py-3 rounded-lg text-sm md:text-base font-medium whitespace-nowrap
+                      ${index === 0 ? "bg-marketing-purple text-white" : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    {title}
+                  </button>
+                ))
+            ) : (
+              // Default buttons if no recommendations available
+              <>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  <Plus className="h-4 w-4 inline mr-2" />
+                  New Chat
+                </button>
+                <button className="px-6 py-3 rounded-lg bg-marketing-purple text-white text-sm md:text-base font-medium whitespace-nowrap">
+                  Social Media
+                </button>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  Blog Content
+                </button>
+                <button className="px-6 py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm md:text-base font-medium whitespace-nowrap">
+                  Email Marketing
+                </button>
+              </>
+            )}
           </div>
         </div>
         
