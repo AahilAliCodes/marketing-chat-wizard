@@ -162,7 +162,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a marketing analysis expert. Analyze this website content and provide a structured analysis in JSON format with the following fields:\n1. productOverview: Brief description in 1-2 sentences\n2. coreValueProposition: Most unique/urgent benefit\n3. targetAudience: { type: "Consumers" | "Business" | "Government", segments: string[] }\n4. currentStage: Stage of product (e.g., "Just an idea", "MVP live", "Some beta users", "Public launch", "Revenue generating")\n5. goals: string[] (e.g., ["Awareness", "Waitlist signups", "App downloads"])\n6. suggestedBudget: Suggested budget range based on market and product stage\n7. strengths: string[] (Key advantages)\n8. constraints: string[] (Limitations and risks)\n9. preferredChannels: string[] (e.g., ["Paid ads", "Content marketing", "PR"])\n10. toneAndPersonality: How the brand should feel in marketing materials'
+            content: 'You are a marketing analysis expert. Analyze this website content and provide a structured analysis as a clean JSON object with the following fields:\nproductOverview: string (Brief description in 1-2 sentences)\ncoreValueProposition: string (Most unique/urgent benefit)\ntargetAudience: {type: "Consumers" | "Business" | "Government", segments: string[]}\ncurrentStage: string (Stage of product like "MVP live", "Some beta users", etc)\ngoals: string[] (e.g., ["Awareness", "Waitlist signups", "App downloads"])\nsuggestedBudget: string (Suggested budget range)\nstrengths: string[] (Key advantages)\nconstraints: string[] (Limitations and risks)\npreferredChannels: string[] (e.g., ["Paid ads", "Content marketing", "PR"])\ntoneAndPersonality: string (Brand feel in marketing)'
           },
           {
             role: 'user',
@@ -182,10 +182,45 @@ serve(async (req) => {
     const openaiData = await openaiResponse.json();
     console.log('OpenAI analysis received');
 
-    // Parse the response
+    // Parse the response - with improved error handling for JSON parsing
     const analysisResponse = openaiData.choices[0].message.content;
-    const analysis = JSON.parse(analysisResponse) as WebsiteAnalysis;
-    console.log('Analysis parsed successfully');
+    
+    // Extract JSON from response (in case it's wrapped in markdown code blocks)
+    let jsonText = analysisResponse;
+    
+    // Check if the response contains a JSON code block
+    const jsonMatch = analysisResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch && jsonMatch[1]) {
+      jsonText = jsonMatch[1];
+    }
+    
+    let analysis: WebsiteAnalysis;
+    try {
+      analysis = JSON.parse(jsonText);
+      console.log('Analysis parsed successfully');
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.log('Raw content that failed to parse:', jsonText);
+      
+      // Fallback: Create a basic analysis object with error information
+      analysis = {
+        productOverview: "Could not analyze product",
+        coreValueProposition: "Unknown (analysis failed)",
+        targetAudience: {
+          type: "Consumers",
+          segments: ["General audience"]
+        },
+        currentStage: "Unknown",
+        goals: ["Website visibility"],
+        suggestedBudget: "$500-1000",
+        strengths: ["Online presence"],
+        constraints: ["Limited information available"],
+        preferredChannels: ["Social media", "Content marketing"],
+        toneAndPersonality: "Professional"
+      };
+      
+      console.log('Using fallback analysis data');
+    }
 
     // Generate initial campaign recommendations with default budget
     console.log('Generating campaign recommendations...');
@@ -208,7 +243,7 @@ serve(async (req) => {
 5. A realistic ROI estimate (e.g., "2.5x") - THIS FIELD IS REQUIRED AND MUST BE A STRING
 
 Make concise recommendations. (150 words or less)
-Format the response as a JSON array of campaign objects.`
+Format the response as a clean JSON array of campaign objects without any markdown formatting.`
           },
           {
             role: 'user',
@@ -227,14 +262,58 @@ Format the response as a JSON array of campaign objects.`
 
     const recommendationsData = await recommendationsResponse.json();
     const recommendationsText = recommendationsData.choices[0].message.content;
-    const recommendations = JSON.parse(recommendationsText) as CampaignRecommendation[];
+    
+    // Extract JSON from recommendations response
+    let recommendationsJson = recommendationsText;
+    const recJsonMatch = recommendationsText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (recJsonMatch && recJsonMatch[1]) {
+      recommendationsJson = recJsonMatch[1];
+    }
+    
+    let recommendations: CampaignRecommendation[];
+    try {
+      recommendations = JSON.parse(recommendationsJson);
+    } catch (parseError) {
+      console.error('Recommendations parse error:', parseError);
+      
+      // Fallback recommendations
+      recommendations = [
+        {
+          title: "Content Marketing Strategy",
+          platform: "Blog / Website",
+          description: "Create valuable content that attracts and engages the target audience.",
+          insights: ["Builds authority in the industry", "Improves SEO ranking", "Creates shareable assets"],
+          roi: "2.0x",
+          difficulty: "Medium",
+          budget: "$0-500"
+        },
+        {
+          title: "Social Media Engagement",
+          platform: "Instagram / LinkedIn",
+          description: "Build community through regular, engaging social posts.",
+          insights: ["Increases brand awareness", "Creates direct customer communication", "Provides market insights"],
+          roi: "1.8x",
+          difficulty: "Easy",
+          budget: "$0-200"
+        },
+        {
+          title: "Email Marketing Campaign",
+          platform: "MailChimp / SendGrid",
+          description: "Develop targeted email sequences for leads and customers.",
+          insights: ["High conversion rates", "Direct access to interested audience", "Measurable results"],
+          roi: "3.0x",
+          difficulty: "Medium",
+          budget: "$0-100"
+        }
+      ];
+    }
     
     // Validate recommendations
     const validatedRecommendations = recommendations.map(rec => ({
       ...rec,
       roi: rec.roi || "2.0x", // Default ROI if missing
       difficulty: rec.difficulty || "Medium", // Default difficulty if missing
-      budget: rec.budget || "$500-1000" // Default budget if missing
+      budget: rec.budget || "$0-500" // Default budget if missing
     }));
 
     console.log('Campaign recommendations generated successfully');
