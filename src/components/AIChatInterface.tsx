@@ -107,7 +107,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
               {campaignType ? `${campaignType}` : 'Marketing AI Chat'}
             </h3>
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span>Website: {websiteUrl}</span>
+              <span className="truncate max-w-[200px]">Website: {websiteUrl}</span>
               {campaignType && (
                 <Badge variant="outline" className="ml-1">
                   {campaignType}
@@ -135,7 +135,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
                 <p className="text-xs font-medium text-gray-600 mb-2">
                   {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'AI Assistant'}
                 </p>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <div className="text-sm break-words whitespace-pre-wrap">{message.content}</div>
               </CardContent>
             </Card>
           ))}

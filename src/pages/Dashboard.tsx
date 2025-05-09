@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -11,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -31,6 +30,7 @@ const Dashboard = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
@@ -56,6 +56,14 @@ const Dashboard = () => {
       icon: <FileText className="h-6 w-6" />
     }
   ];
+  
+  // Toggle expanded state for a card
+  const toggleCardExpand = (cardId: string) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [cardId]: !prev[cardId]
+    }));
+  };
   
   // Get state from location if available
   const state = location.state as LocationState;
@@ -185,18 +193,34 @@ const Dashboard = () => {
             {!activeCampaign ? (
               <div className="grid md:grid-cols-3 gap-8 mb-8">
                 {campaignOptions.map((campaign) => (
-                  <Button
-                    key={campaign.id}
-                    variant="outline"
-                    onClick={() => setActiveCampaign(campaign.id)}
-                    className="p-8 h-auto flex flex-col items-center text-center border-2 hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all shadow-sm hover:shadow-md"
-                  >
-                    <div className="bg-marketing-purple/10 p-4 rounded-full mb-6">
-                      {campaign.icon}
-                    </div>
-                    <h3 className="text-xl font-medium mb-3">{campaign.title}</h3>
-                    <p className="text-sm text-gray-500">{campaign.description}</p>
-                  </Button>
+                  <div key={campaign.id} className="relative flex flex-col border-2 rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden">
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveCampaign(campaign.id)}
+                      className="p-8 h-auto flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all flex-1 border-0"
+                    >
+                      <div className="bg-marketing-purple/10 p-4 rounded-full mb-6">
+                        {campaign.icon}
+                      </div>
+                      <h3 className="text-xl font-medium mb-3">{campaign.title}</h3>
+                      <div className={`text-sm text-gray-500 w-full ${expandedCards[campaign.id] ? '' : 'line-clamp-2'}`}>
+                        {campaign.description}
+                      </div>
+                    </Button>
+                    {campaign.description.length > 60 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCardExpand(campaign.id);
+                        }}
+                        className="absolute bottom-1 right-1 h-7 w-7 p-0"
+                      >
+                        {expandedCards[campaign.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
