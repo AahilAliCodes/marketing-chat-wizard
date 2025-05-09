@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,44 @@ import { supabase } from '@/integrations/supabase/client';
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recentWebsiteUrl, setRecentWebsiteUrl] = useState<string | null>(null);
+  const [campaignButtons, setCampaignButtons] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Fetch recent website and campaign titles when component mounts
+  useEffect(() => {
+    const fetchRecentData = async () => {
+      try {
+        const { data: recentAnalysis } = await supabase
+          .from('website_analyses')
+          .select('website_url')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (recentAnalysis) {
+          setRecentWebsiteUrl(recentAnalysis.website_url);
+          
+          // Fetch campaign titles
+          const { data: recommendations } = await supabase
+            .from('campaign_recommendations')
+            .select('title')
+            .eq('website_url', recentAnalysis.website_url);
+            
+          if (recommendations && recommendations.length > 0) {
+            // Extract unique titles, limit to 4
+            const uniqueTitles = [...new Set(recommendations.map(rec => rec.title))].slice(0, 4);
+            setCampaignButtons(uniqueTitles);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching recent data:', error);
+      }
+    };
+    
+    fetchRecentData();
+  }, []);
 
   const handleAnalyzeWebsite = async () => {
     if (!websiteUrl) {
@@ -61,6 +97,17 @@ const Home = () => {
       handleAnalyzeWebsite();
     }
   };
+  
+  const handleCampaignClick = (campaignTitle: string) => {
+    if (recentWebsiteUrl) {
+      navigate('/dashboard', { 
+        state: { 
+          websiteUrl: recentWebsiteUrl,
+          campaignTitle: campaignTitle 
+        }
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
@@ -108,6 +155,34 @@ const Home = () => {
               <Send className="h-5 w-5" />
             </button>
           </div>
+          
+          {recentWebsiteUrl && campaignButtons.length > 0 && (
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium mb-3">Continue exploring your marketing strategy</h3>
+              <p className="text-sm text-gray-500 mb-4">For: {recentWebsiteUrl}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {campaignButtons.map((title, index) => (
+                  <Button 
+                    key={title}
+                    variant={index % 2 === 0 ? "default" : "outline"}
+                    className={index % 2 === 0 ? "border border-marketing-purple bg-marketing-purple hover:bg-marketing-purple/90" : "border border-marketing-purple text-marketing-purple hover:bg-marketing-purple/10"}
+                    onClick={() => handleCampaignClick(title)}
+                  >
+                    {title} <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ))}
+              </div>
+              
+              <Button 
+                variant="link" 
+                className="mt-4 text-marketing-purple"
+                onClick={() => navigate('/dashboard')}
+              >
+                View all campaigns
+              </Button>
+            </div>
+          )}
         </div>
         
         <div className="text-sm text-gray-500 max-w-2xl">
