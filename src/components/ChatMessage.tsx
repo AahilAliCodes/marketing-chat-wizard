@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { MessageType } from '@/context/ChatContext';
+import { MessageType } from '@/types/chat';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
