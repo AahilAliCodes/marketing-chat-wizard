@@ -15,10 +15,23 @@ interface LocationState {
   websiteUrl?: string;
 }
 
+interface CampaignRecommendation {
+  id: string;
+  title: string;
+  platform: string;
+  description: string;
+  insights: string[];
+  roi: string;
+  difficulty: string;
+  budget: string;
+  website_url: string;
+}
+
 const Dashboard = () => {
   const [activeItem, setActiveItem] = useState<string>('home');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [campaignRecommendations, setCampaignRecommendations] = useState<CampaignRecommendation[]>([]);
   const { user } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
@@ -35,18 +48,29 @@ const Dashboard = () => {
         
         try {
           // First check if this website has already been analyzed
-          const { data: existingAnalysis } = await supabase
+          const { data: existingAnalysis, error } = await supabase
             .from('website_analyses')
             .select('*')
             .eq('website_url', state.websiteUrl)
-            .single();
+            .maybeSingle();
+          
+          if (error) {
+            throw new Error(error.message);
+          }
           
           if (existingAnalysis) {
             // Website already exists in the database, fetch recommendations
-            const { data: existingRecommendations } = await supabase
+            const { data: existingRecommendations, error: recError } = await supabase
               .from('campaign_recommendations')
               .select('*')
               .eq('website_url', state.websiteUrl);
+            
+            if (recError) {
+              throw new Error(recError.message);
+            }
+            
+            // Store the recommendations in state
+            setCampaignRecommendations(existingRecommendations || []);
             
             // Show success toast with indication that existing data was used
             toast({
@@ -58,12 +82,17 @@ const Dashboard = () => {
             console.log('Using existing recommendations:', existingRecommendations);
           } else {
             // Website not yet analyzed, call the edge function
-            const { data, error } = await supabase.functions.invoke('analyze-website', {
+            const { data, error: funcError } = await supabase.functions.invoke('analyze-website', {
               body: { url: state.websiteUrl },
             });
             
-            if (error) {
-              throw new Error(error.message);
+            if (funcError) {
+              throw new Error(funcError.message);
+            }
+            
+            // Store the recommendations
+            if (data?.recommendations) {
+              setCampaignRecommendations(data.recommendations);
             }
             
             // Show success toast

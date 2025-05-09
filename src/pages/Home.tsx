@@ -1,16 +1,50 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Send } from 'lucide-react';
+import { ArrowRight, Send, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+interface CampaignRecommendation {
+  id: string;
+  title: string;
+}
+
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recommendationTitles, setRecommendationTitles] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch unique campaign recommendation titles when component mounts
+    const fetchRecommendationTitles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('campaign_recommendations')
+          .select('title')
+          .limit(20);
+          
+        if (error) {
+          console.error('Error fetching recommendations:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // Get unique titles
+          const titles = Array.from(new Set(data.map(rec => rec.title)));
+          // Limit to 3-4 titles for display
+          setRecommendationTitles(titles.slice(0, 4));
+        }
+      } catch (err) {
+        console.error('Failed to fetch recommendation titles:', err);
+      }
+    };
+    
+    fetchRecommendationTitles();
+  }, []);
 
   const handleAnalyzeWebsite = async () => {
     if (!websiteUrl) {
@@ -107,6 +141,28 @@ const Home = () => {
             >
               <Send className="h-5 w-5" />
             </button>
+          </div>
+          
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Button
+              variant="outline"
+              className="border-dashed border-gray-300 text-gray-500 hover:text-marketing-purple hover:border-marketing-purple"
+              onClick={() => setWebsiteUrl('')}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              New Chat
+            </Button>
+            
+            {recommendationTitles.map((title, index) => (
+              <Button
+                key={index}
+                variant={index % 2 === 0 ? "default" : "outline"}
+                className={index % 2 === 0 ? "bg-marketing-purple hover:bg-marketing-purple/90" : "border-marketing-purple text-marketing-purple hover:bg-marketing-purple/10"}
+                onClick={() => navigate('/dashboard')}
+              >
+                {title}
+              </Button>
+            ))}
           </div>
         </div>
         
