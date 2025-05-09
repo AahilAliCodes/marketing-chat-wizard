@@ -61,13 +61,6 @@ serve(async (req) => {
       );
     }
 
-    if (!recommendations || recommendations.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No campaign recommendations found for this website" }), 
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Also fetch website analysis for additional context
     const { data: websiteAnalysis, error: analysisError } = await supabase
       .from('website_analyses')
@@ -82,9 +75,35 @@ serve(async (req) => {
     // Prepare the context for the AI
     let context = {
       website: websiteUrl,
-      recommendations: recommendations,
-      websiteAnalysis: websiteAnalysis || null
+      recommendations: recommendations || [],
+      websiteAnalysis: websiteAnalysis || null,
+      campaignType: campaignType || null
     };
+
+    // Create personalized system prompt based on campaign type
+    let systemPrompt = `You are a marketing assistant that provides answers based on campaign recommendations data for ${websiteUrl}.`;
+    
+    if (campaignType === "Community Building on Discord") {
+      systemPrompt = `You are a Discord community building specialist focused on helping ${websiteUrl} create and grow a thriving Discord community. 
+      Provide specific, actionable advice on channel organization, moderation strategies, engagement activities, and community growth. 
+      Include Discord-specific features and best practices. Make recommendations relevant to ${websiteUrl}'s target audience.
+      Always be encouraging, practical, and focused on building sustainable communities.`;
+    } 
+    else if (campaignType === "Create Viral Content on TikTok") {
+      systemPrompt = `You are a TikTok content marketing specialist helping ${websiteUrl} create viral, engaging content.
+      Provide specific, actionable advice on video concepts, trending sounds, hashtags, posting times, and engagement strategies.
+      Include TikTok-specific features, trends, and algorithm insights. Make recommendations relevant to ${websiteUrl}'s target audience.
+      Be creative, enthusiastic, and focused on achieving high engagement metrics.`;
+    }
+    else if (campaignType === "Content Marketing") {
+      systemPrompt = `You are a content marketing strategist helping ${websiteUrl} develop high-quality articles, blogs, and resources.
+      Provide specific, actionable advice on content planning, SEO optimization, publishing platforms, and audience targeting.
+      Include content marketing best practices, topic ideation, and distribution strategies. Make recommendations relevant to ${websiteUrl}'s target audience.
+      Be thorough, strategic, and focused on creating valuable content that converts.`;
+    }
+    
+    systemPrompt += ` Answer user questions specifically and directly related to the provided data.
+      If you don't have enough information, say so rather than making things up.`;
 
     // Call OpenAI API with the recommendations and user message
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -98,11 +117,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a marketing assistant that provides answers based on campaign recommendations data. 
-            You have access to campaign recommendations and website analysis for ${websiteUrl}.
-            Answer user questions about marketing strategies, explain the recommendations, or suggest improvements.
-            Keep responses concise, specific, and directly related to the provided data.
-            If you don't have enough information, say so rather than making things up.`
+            content: systemPrompt
           },
           {
             role: 'user',

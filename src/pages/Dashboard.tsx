@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -11,20 +10,18 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
+import { MessageSquare } from 'lucide-react';
 
 interface LocationState {
   isAnalyzing?: boolean;
   websiteUrl?: string;
 }
 
-interface CampaignRecommendation {
+interface CampaignOption {
+  id: string;
   title: string;
-  platform: string;
   description: string;
-  insights: string[];
-  roi: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  budget: string;
+  icon: React.ReactNode;
 }
 
 const Dashboard = () => {
@@ -32,11 +29,32 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
-  const [campaignTitles, setCampaignTitles] = useState<string[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
   const { user } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
+  
+  // Define campaign options
+  const campaignOptions: CampaignOption[] = [
+    {
+      id: 'discord',
+      title: 'Community Building on Discord',
+      description: 'Set up a Discord server to engage users right away, fostering immediate interaction and support.',
+      icon: <MessageSquare />
+    },
+    {
+      id: 'tiktok',
+      title: 'Create Viral Content on TikTok',
+      description: 'Develop short, engaging videos that highlight user interactions and drive traffic quickly.',
+      icon: <MessageSquare />
+    },
+    {
+      id: 'contentMarketing',
+      title: 'Content Marketing',
+      description: 'Start publishing insightful articles on Medium addressing common queries and support topics.',
+      icon: <MessageSquare />
+    }
+  ];
   
   // Get state from location if available
   const state = location.state as LocationState;
@@ -58,20 +76,13 @@ const Dashboard = () => {
             .single();
           
           if (existingAnalysis) {
-            // Website already exists in the database, fetch recommendations
-            const { data: existingRecommendations } = await supabase
-              .from('campaign_recommendations')
-              .select('*')
-              .eq('website_url', state.websiteUrl);
-            
-            // Show success toast with indication that existing data was used
+            // Website already exists in the database
             toast({
               title: 'Analysis Retrieved',
               description: 'Previously analyzed website data has been loaded',
             });
             
             console.log('Using existing analysis:', existingAnalysis);
-            console.log('Using existing recommendations:', existingRecommendations);
           } else {
             // Website not yet analyzed, call the edge function
             const { data, error } = await supabase.functions.invoke('analyze-website', {
@@ -130,18 +141,6 @@ const Dashboard = () => {
           
           if (recentAnalysis) {
             setWebsiteUrl(recentAnalysis.website_url);
-            
-            // Fetch campaign titles
-            const { data: recommendations } = await supabase
-              .from('campaign_recommendations')
-              .select('title')
-              .eq('website_url', recentAnalysis.website_url);
-              
-            if (recommendations && recommendations.length > 0) {
-              // Extract unique titles
-              const uniqueTitles = [...new Set(recommendations.map(rec => rec.title))];
-              setCampaignTitles(uniqueTitles);
-            }
           }
         } catch (error) {
           console.error('Error fetching recent website:', error);
@@ -180,39 +179,58 @@ const Dashboard = () => {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="p-4 border-b">
             <h1 className="text-2xl font-bold mb-2">Campaign Recommendations</h1>
-            <p className="text-gray-600 mb-4">Website: {websiteUrl}</p>
+            <p className="text-gray-600 mb-6">Website: {websiteUrl}</p>
             
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              <Button
-                variant={activeCampaign === null ? "default" : "outline"}
-                onClick={() => setActiveCampaign(null)}
-                className="whitespace-nowrap"
-              >
-                All Campaigns
-              </Button>
-              
-              {campaignTitles.map((title) => (
+            {!activeCampaign ? (
+              <div className="grid md:grid-cols-3 gap-6 mb-6">
+                {campaignOptions.map((campaign) => (
+                  <Button
+                    key={campaign.id}
+                    variant="outline"
+                    onClick={() => setActiveCampaign(campaign.id)}
+                    className="p-6 h-auto flex flex-col items-center text-center border-2 hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all"
+                  >
+                    <div className="bg-marketing-purple/10 p-3 rounded-full mb-4">
+                      {campaign.icon}
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">{campaign.title}</h3>
+                    <p className="text-sm text-gray-500">{campaign.description}</p>
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 <Button
-                  key={title}
-                  variant={activeCampaign === title ? "default" : "outline"}
-                  onClick={() => setActiveCampaign(title)}
+                  variant="outline"
+                  onClick={() => setActiveCampaign(null)}
                   className="whitespace-nowrap"
                 >
-                  {title}
+                  Back to All Campaigns
                 </Button>
-              ))}
-            </div>
+                
+                <Button
+                  variant="default"
+                  className="whitespace-nowrap"
+                >
+                  {campaignOptions.find(c => c.id === activeCampaign)?.title}
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex-1 p-4 overflow-y-auto">
-            <AIChatInterface 
-              websiteUrl={websiteUrl} 
-              campaignType={activeCampaign || undefined} 
-            />
+            {activeCampaign && (
+              <AIChatInterface 
+                websiteUrl={websiteUrl} 
+                campaignType={campaignOptions.find(c => c.id === activeCampaign)?.title || undefined} 
+              />
+            )}
           </div>
         </div>
       ) : (
-        <ChatArea />
+        <ChatProvider>
+          <ChatArea />
+        </ChatProvider>
       )}
       
       <Toaster />

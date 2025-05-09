@@ -22,16 +22,31 @@ interface ChatMessage {
 
 const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignType }) => {
   const [userMessage, setUserMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'system',
-      content: `I'm your marketing assistant for ${websiteUrl}. Ask me anything about the campaign recommendations!`,
-      timestamp: new Date()
-    }
-  ]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Generate welcome message based on campaign type
+    let welcomeMessage = `I'm your marketing assistant for ${websiteUrl}.`;
+    
+    if (campaignType === 'Community Building on Discord') {
+      welcomeMessage = `I'm your Discord community building specialist. Let's create an engaging community strategy for ${websiteUrl}! Ask me about setting up channels, moderation strategies, engagement activities, or any other Discord community questions.`;
+    } 
+    else if (campaignType === 'Create Viral Content on TikTok') {
+      welcomeMessage = `I'm your TikTok content marketing specialist for ${websiteUrl}. Ask me about creating viral videos, trending hashtags, content planning, or any other TikTok marketing strategies!`;
+    }
+    else if (campaignType === 'Content Marketing') {
+      welcomeMessage = `I'm your content marketing strategist for ${websiteUrl}. Let's develop high-quality articles, blogs, and resources! Ask me about SEO optimization, publishing platforms, content calendars, or topic ideas.`;
+    }
+    
+    setChatHistory([{
+      id: 'welcome',
+      role: 'system',
+      content: welcomeMessage,
+      timestamp: new Date()
+    }]);
+  }, [websiteUrl, campaignType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +87,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-medium">Marketing AI Chat</h3>
+          <h3 className="text-lg font-medium">
+            {campaignType ? `${campaignType} AI Chat` : 'Marketing AI Chat'}
+          </h3>
           <p className="text-sm text-gray-500">
             Website: {websiteUrl}
             {campaignType && (
@@ -104,7 +121,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
         <div className="flex items-center gap-2">
           <Textarea
             className="flex-1 min-h-[60px] max-h-[120px] resize-none"
-            placeholder="Ask about marketing strategies..."
+            placeholder={`Ask about ${campaignType || 'marketing strategies'}...`}
             value={userMessage}
             onChange={(e) => setUserMessage(e.target.value)}
             disabled={isLoading}
