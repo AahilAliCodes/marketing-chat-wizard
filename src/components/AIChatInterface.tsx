@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,19 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const getCampaignIcon = () => {
+    switch (campaignType) {
+      case 'Community Building on Discord':
+        return <Users className="h-5 w-5" />;
+      case 'Create Viral Content on TikTok':
+        return <Video className="h-5 w-5" />;
+      case 'Content Marketing':
+        return <FileText className="h-5 w-5" />;
+      default:
+        return <MessageSquare className="h-5 w-5" />;
+    }
+  };
 
   useEffect(() => {
     // Generate welcome message based on campaign type
@@ -85,28 +98,42 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-medium">
-            {campaignType ? `${campaignType} AI Chat` : 'Marketing AI Chat'}
-          </h3>
-          <p className="text-sm text-gray-500">
-            Website: {websiteUrl}
-            {campaignType && (
-              <Badge variant="outline" className="ml-2">
-                {campaignType}
-              </Badge>
-            )}
-          </p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-marketing-purple/10 p-2 rounded-full">
+            {getCampaignIcon()}
+          </div>
+          <div>
+            <h3 className="text-xl font-medium">
+              {campaignType ? `${campaignType}` : 'Marketing AI Chat'}
+            </h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>Website: {websiteUrl}</span>
+              {campaignType && (
+                <Badge variant="outline" className="ml-1">
+                  {campaignType}
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       
-      <ScrollArea className="flex-1 pr-4 mb-4">
+      <ScrollArea className="flex-1 pr-4 mb-6 overflow-y-auto">
         <div className="space-y-4">
           {chatHistory.map((message) => (
-            <Card key={message.id} className={`${message.role === 'user' ? 'bg-gray-100' : message.role === 'system' ? 'bg-gray-50 border-marketing-purple/20' : 'bg-marketing-purple/10'}`}>
-              <CardContent className="p-3">
-                <p className="text-xs text-gray-500 mb-1">
+            <Card 
+              key={message.id} 
+              className={`${
+                message.role === 'user' 
+                  ? 'bg-gray-100 border-gray-200' 
+                  : message.role === 'system' 
+                    ? 'bg-marketing-purple/5 border-marketing-purple/20' 
+                    : 'bg-marketing-purple/10 border-marketing-purple/30'
+              }`}
+            >
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-gray-600 mb-2">
                   {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'AI Assistant'}
                 </p>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -118,9 +145,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       </ScrollArea>
       
       <form onSubmit={handleSubmit} className="mt-auto">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Textarea
-            className="flex-1 min-h-[60px] max-h-[120px] resize-none"
+            className="flex-1 min-h-[60px] max-h-[120px] resize-none border-2 focus:border-marketing-purple/50"
             placeholder={`Ask about ${campaignType || 'marketing strategies'}...`}
             value={userMessage}
             onChange={(e) => setUserMessage(e.target.value)}
@@ -134,7 +161,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           />
           <Button 
             type="submit" 
-            className="h-[60px]"
+            className="h-[60px] px-6"
             disabled={!userMessage.trim() || isLoading}
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
