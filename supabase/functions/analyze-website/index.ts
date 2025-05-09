@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
 
 const supabaseUrl = "https://phgrwmrxcryhkkmjkpqc.supabase.co";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
+const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "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";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,7 +57,7 @@ serve(async (req) => {
   }
 
   try {
-    if (!openaiApiKey) {
+    if (!openaiApiKey || openaiApiKey.trim() === "") {
       return new Response(
         JSON.stringify({ error: "OpenAI API key is not configured" }), 
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
