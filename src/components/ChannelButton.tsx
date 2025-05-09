@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChannelType } from '@/context/ChatContext';
+import { ChannelType } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { Save } from 'lucide-react';
 

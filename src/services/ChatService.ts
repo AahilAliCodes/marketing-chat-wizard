@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { ChannelType, MessageType } from "@/context/ChatContext";
+import { ChannelType, MessageType } from "@/types/chat";
 
 export const saveChatChannel = async (channel: ChannelType) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
