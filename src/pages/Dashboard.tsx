@@ -34,20 +34,44 @@ const Dashboard = () => {
         const startTime = Date.now();
         
         try {
-          // Call the Supabase Edge Function
-          const { data, error } = await supabase.functions.invoke('analyze-website', {
-            body: { url: state.websiteUrl },
-          });
+          // First check if this website has already been analyzed
+          const { data: existingAnalysis } = await supabase
+            .from('website_analyses')
+            .select('*')
+            .eq('website_url', state.websiteUrl)
+            .single();
           
-          if (error) {
-            throw new Error(error.message);
+          if (existingAnalysis) {
+            // Website already exists in the database, fetch recommendations
+            const { data: existingRecommendations } = await supabase
+              .from('campaign_recommendations')
+              .select('*')
+              .eq('website_url', state.websiteUrl);
+            
+            // Show success toast with indication that existing data was used
+            toast({
+              title: 'Analysis Retrieved',
+              description: 'Previously analyzed website data has been loaded',
+            });
+            
+            console.log('Using existing analysis:', existingAnalysis);
+            console.log('Using existing recommendations:', existingRecommendations);
+          } else {
+            // Website not yet analyzed, call the edge function
+            const { data, error } = await supabase.functions.invoke('analyze-website', {
+              body: { url: state.websiteUrl },
+            });
+            
+            if (error) {
+              throw new Error(error.message);
+            }
+            
+            // Show success toast
+            toast({
+              title: 'Analysis Complete',
+              description: 'Website has been analyzed and recommendations generated',
+            });
           }
-          
-          // Show success toast
-          toast({
-            title: 'Analysis Complete',
-            description: 'Website has been analyzed and recommendations generated',
-          });
           
         } catch (error: any) {
           console.error('Analysis error:', error);
