@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, MessageSquare } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Users, Video, FileText } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
