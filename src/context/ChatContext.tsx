@@ -17,8 +17,6 @@ type ChatContextType = {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export type { ChannelType, MessageType };
-
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const chatOps = useChatOperations();
   const { user } = useAuth();
@@ -28,7 +26,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       chatOps.loadUserChannels();
     }
-  }, [user]);
+  }, [user, chatOps.loadUserChannels]);
 
   return (
     <ChatContext.Provider value={chatOps}>
