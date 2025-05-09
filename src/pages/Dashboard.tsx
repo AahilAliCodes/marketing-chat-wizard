@@ -4,7 +4,7 @@ import ChatArea from '@/components/ChatArea';
 import { ChatProvider } from '@/context/ChatContext';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,11 +74,6 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [state?.isAnalyzing, state?.websiteUrl, toast]);
-
-  // Redirect to auth page if not logged in
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
 
   // Show loading screen during loading or analysis
   if (isLoading || isAnalyzing) {
