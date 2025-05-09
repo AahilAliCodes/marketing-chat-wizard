@@ -1,11 +1,67 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Home = () => {
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleAnalyzeWebsite = async () => {
+    if (!websiteUrl) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a website URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Simple URL validation
+    if (!/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(websiteUrl)) {
+      toast({
+        title: 'Invalid URL',
+        description: 'Please enter a valid website URL',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Format URL with https if not provided
+      const formattedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
+      
+      // Navigate to dashboard with loading state
+      navigate('/dashboard', { 
+        state: { 
+          isAnalyzing: true,
+          websiteUrl: formattedUrl 
+        }
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to analyze website',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAnalyzeWebsite();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
       <header className="container mx-auto p-4 flex justify-between items-center">
@@ -39,10 +95,18 @@ const Home = () => {
               type="text" 
               placeholder="Enter your business website URL" 
               className="flex-1 p-2 outline-none text-gray-700"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={isLoading}
             />
-            <Link to="/dashboard" className="text-marketing-purple hover:text-marketing-purple/80 p-2">
+            <button 
+              onClick={handleAnalyzeWebsite}
+              disabled={isLoading}
+              className="text-marketing-purple hover:text-marketing-purple/80 p-2"
+            >
               <Send className="h-5 w-5" />
-            </Link>
+            </button>
           </div>
         </div>
         
