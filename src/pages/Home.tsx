@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
 
 const Home = () => {
   return (
@@ -33,20 +34,16 @@ const Home = () => {
         </p>
         
         <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8 mb-12">
-          <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 mb-6">
+          <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 mb-6 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">
             <input 
               type="text" 
               placeholder="Enter your business website URL" 
               className="flex-1 p-2 outline-none text-gray-700"
             />
+            <Link to="/dashboard" className="text-marketing-purple hover:text-marketing-purple/80 p-2">
+              <Send className="h-5 w-5" />
+            </Link>
           </div>
-          
-          <Link to="/dashboard">
-            <Button className="bg-marketing-purple hover:bg-marketing-purple/90 text-white px-6 py-6 h-auto text-lg rounded-lg w-full sm:w-auto">
-              Get Marketing Recommendations
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
         </div>
         
         <div className="text-sm text-gray-500 max-w-2xl">
