@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -11,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -193,11 +195,15 @@ const Dashboard = () => {
             {!activeCampaign ? (
               <div className="grid md:grid-cols-3 gap-8 mb-8">
                 {campaignOptions.map((campaign) => (
-                  <div key={campaign.id} className="relative flex flex-col border-2 rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden">
-                    <Button
-                      variant="outline"
+                  <Collapsible
+                    key={campaign.id}
+                    open={expandedCards[campaign.id]}
+                    onOpenChange={(open) => setExpandedCards(prev => ({...prev, [campaign.id]: open}))}
+                    className="relative flex flex-col border-2 rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden"
+                  >
+                    <div 
                       onClick={() => setActiveCampaign(campaign.id)}
-                      className="p-8 h-auto flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all flex-1 border-0"
+                      className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all cursor-pointer"
                     >
                       <div className="bg-marketing-purple/10 p-4 rounded-full mb-6">
                         {campaign.icon}
@@ -206,21 +212,32 @@ const Dashboard = () => {
                       <div className={`text-sm text-gray-500 w-full ${expandedCards[campaign.id] ? '' : 'line-clamp-2'}`}>
                         {campaign.description}
                       </div>
-                    </Button>
+                    </div>
+                    
                     {campaign.description.length > 60 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleCardExpand(campaign.id);
-                        }}
-                        className="absolute bottom-1 right-1 h-7 w-7 p-0"
-                      >
-                        {expandedCards[campaign.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCardExpand(campaign.id);
+                          }}
+                          className="absolute bottom-1 right-1 h-7 w-7 p-0"
+                        >
+                          {expandedCards[campaign.id] ? 
+                            <ChevronUp className="h-4 w-4" /> : 
+                            <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </CollapsibleTrigger>
                     )}
-                  </div>
+                    
+                    <CollapsibleContent className="px-8 pb-6">
+                      <div className="text-sm text-gray-500 pt-2 border-t mt-2">
+                        <p>Start this campaign to get detailed AI assistance for {campaign.title.toLowerCase()}.</p>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 ))}
               </div>
             ) : (
