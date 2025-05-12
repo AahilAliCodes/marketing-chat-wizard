@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
@@ -32,6 +31,7 @@ const Dashboard = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
+  // Store expanded state for each card individually
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
   const location = useLocation();
@@ -59,7 +59,7 @@ const Dashboard = () => {
     }
   ];
   
-  // Toggle expanded state for a card
+  // Toggle expanded state for a specific card only
   const toggleCardExpand = (cardId: string) => {
     setExpandedCards(prev => ({
       ...prev,
@@ -197,8 +197,8 @@ const Dashboard = () => {
                 {campaignOptions.map((campaign) => (
                   <Collapsible
                     key={campaign.id}
-                    open={expandedCards[campaign.id]}
-                    onOpenChange={(open) => setExpandedCards(prev => ({...prev, [campaign.id]: open}))}
+                    open={expandedCards[campaign.id] || false}
+                    onOpenChange={() => {}} // Remove automatic toggle here
                     className="relative flex flex-col border-2 rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden"
                   >
                     <div 
