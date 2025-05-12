@@ -1,8 +1,5 @@
 
-project_id = "phgrwmrxcryhkkmjkpqc"
+project_id = "your-project-id"
 
-[functions.analyze-website]
-verify_jwt = false
-
-[functions.chat-with-recommendations]
-verify_jwt = false
+[functions.generate-content]
+verify_jwt = true

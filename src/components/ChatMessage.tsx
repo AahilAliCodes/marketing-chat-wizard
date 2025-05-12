@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { MessageType } from '@/types/chat';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessageProps {
   message: MessageType;
@@ -12,9 +13,22 @@ interface ChatMessageProps {
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const handlePlayClick = () => {
-    navigate('/runs');
+    // Send message content and context to runs page
+    navigate('/runs', { 
+      state: { 
+        messageContent: message.content,
+        messageRole: message.role,
+        timestamp: message.timestamp
+      } 
+    });
+    
+    toast({
+      title: "Starting content generation",
+      description: "Redirecting to the runs page to process your request"
+    });
   };
   
   return (
@@ -22,7 +36,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       "mb-4 max-w-[80%] px-4 py-3 rounded-lg relative",
       isUser ? "ml-auto bg-marketing-purple text-white rounded-tr-none" : "mr-auto bg-gray-100 text-gray-800 rounded-tl-none"
     )}>
-      <div className="text-sm">
+      <div className="text-sm break-words">
         {message.content}
       </div>
       <div className={cn(
@@ -31,15 +45,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       )}>
         <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         
-        {!isUser && (
-          <button
-            onClick={handlePlayClick}
-            className="ml-2 p-1 rounded-full bg-marketing-purple text-white hover:bg-marketing-purple/80 transition-colors"
-            title="Run this prompt"
-          >
-            <Play size={14} />
-          </button>
-        )}
+        <button
+          onClick={handlePlayClick}
+          className="ml-2 p-1 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+          title="Generate content from this message"
+        >
+          <Play size={14} />
+        </button>
       </div>
     </div>
   );
