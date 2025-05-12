@@ -49,6 +49,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           onClick={handlePlayClick}
           className="ml-2 p-1 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
           title="Generate content from this message"
+          aria-label="Generate content"
         >
           <Play size={14} />
         </button>
