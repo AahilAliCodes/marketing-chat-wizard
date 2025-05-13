@@ -42,11 +42,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      // Updated to disable email confirmation
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            email: email
+          }
+        }
+      });
+      
       if (error) throw error;
+      
+      // Automatically sign in after sign up since we're not requiring email verification
+      const { error: signInError } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (signInError) throw signInError;
+      
       toast({
         title: "Account created",
-        description: "Please check your email to verify your account"
+        description: "You have been automatically signed in"
       });
     } catch (error: any) {
       toast({

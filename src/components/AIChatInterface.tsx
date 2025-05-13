@@ -369,8 +369,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
               size="sm"
               className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
               onClick={() => {
-                // TODO: Implement sign in functionality
-                console.log('Sign in clicked');
+                navigate('/auth');
               }}
             >
               <Save className="h-4 w-4 mr-2" />
