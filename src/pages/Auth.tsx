@@ -1,13 +1,42 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const { user, signInWithGoogle, loading } = useAuth();
+  const location = useLocation();
+  const { toast } = useToast();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    // Check if this is a redirect from OAuth
+    const handleOAuthCallback = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Authentication error",
+          description: error.message
+        });
+        console.error("Error getting session:", error);
+      } else if (data?.session) {
+        toast({
+          title: "Authentication successful",
+          description: "You have been successfully signed in"
+        });
+      }
+    };
+
+    // Only run on mount when it might be an OAuth redirect
+    handleOAuthCallback();
+  }, [toast]);
 
   if (loading) {
     return (
