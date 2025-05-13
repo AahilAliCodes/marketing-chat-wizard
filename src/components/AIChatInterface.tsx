@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket, Link, CheckCircle } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -186,6 +188,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [copyingLink, setCopyingLink] = useState(false);
 
   const getCampaignIcon = () => {
     switch (campaignType) {
@@ -250,6 +255,65 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   const handlePromptSelect = (prompt: string) => {
     setUserMessage(prompt);
+  };
+
+  const handleShareChat = async () => {
+    try {
+      // Create a unique ID for sharing this chat
+      const shareId = uuidv4().slice(0, 8);
+      
+      // Create a simple object with the chat data
+      const shareData = {
+        websiteUrl,
+        campaignType,
+        messages: chatHistory
+      };
+      
+      // In a production app, you would save this to a database
+      // For now, we'll use localStorage as a demo
+      localStorage.setItem(`shared-chat-${shareId}`, JSON.stringify(shareData));
+      
+      // Generate shareable link
+      const baseUrl = window.location.origin;
+      const shareUrl = `${baseUrl}/shared-chat/${shareId}`;
+      
+      // Set the share link
+      setShareLink(shareUrl);
+      
+      toast({
+        title: "Chat link created",
+        description: "Copy the link to share this conversation",
+      });
+    } catch (error) {
+      console.error("Error sharing chat:", error);
+      toast({
+        variant: "destructive",
+        title: "Error creating share link",
+        description: "There was a problem generating your share link."
+      });
+    }
+  };
+
+  const copyShareLink = async () => {
+    if (!shareLink) return;
+    
+    setCopyingLink(true);
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      toast({
+        title: "Link copied",
+        description: "Share link copied to clipboard",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        variant: "destructive",
+        title: "Copy failed",
+        description: "Please try copying the link manually"
+      });
+    } finally {
+      setCopyingLink(false);
+    }
   };
 
   return (
@@ -376,18 +440,38 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
               <Save className="h-4 w-4 mr-2" />
               Sign in to save
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
-              onClick={() => {
-                // TODO: Implement share functionality
-                console.log('Share clicked');
-              }}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share chat
-            </Button>
+            
+            {shareLink ? (
+              <div className="flex items-center gap-2">
+                <div className="px-2 py-1 text-xs bg-gray-100 border border-gray-300 rounded-md truncate max-w-[150px]">
+                  {shareLink}
+                </div>
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  className="text-sm text-gray-600 hover:text-green-600 hover:border-green-600"
+                  onClick={copyShareLink}
+                  disabled={copyingLink}
+                >
+                  {copyingLink ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Copy
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
+                onClick={handleShareChat}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share chat
+              </Button>
+            )}
           </div>
         </div>
       </form>
