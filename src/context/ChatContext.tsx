@@ -26,7 +26,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       chatOps.loadUserChannels();
     }
-  }, [user, chatOps.loadUserChannels]);
+  }, [user]);
 
   return (
     <ChatContext.Provider value={chatOps}>

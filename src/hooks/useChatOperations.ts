@@ -1,10 +1,16 @@
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getUserChannels, getFullChannel, saveChatChannel } from '@/services/ChatService';
-import { ChannelType } from '@/types/chat';
+import { 
+  getUserChannels, 
+  getFullChannel, 
+  saveChatChannel, 
+  saveMessage, 
+  createChannel 
+} from '@/services/ChatService';
+import { ChannelType, MessageType } from '@/types/chat';
 import { defaultChannels } from '@/data/defaultChannels';
 
 export const useChatOperations = () => {
@@ -14,7 +20,7 @@ export const useChatOperations = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const loadUserChannels = async () => {
+  const loadUserChannels = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -43,9 +49,23 @@ export const useChatOperations = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, toast]);
 
-  const addMessage = (channelId: string, content: string, role: 'user' | 'assistant') => {
+  // Load user channels when the component mounts if the user is logged in
+  useEffect(() => {
+    if (user) {
+      loadUserChannels();
+    }
+  }, [user, loadUserChannels]);
+
+  const addMessage = useCallback(async (channelId: string, content: string, role: 'user' | 'assistant') => {
+    const newMessage = {
+      id: `msg-${uuidv4()}`,
+      content,
+      role,
+      timestamp: new Date()
+    };
+    
     setChannels(prevChannels => 
       prevChannels.map(channel => {
         if (channel.id === channelId) {
@@ -53,19 +73,24 @@ export const useChatOperations = () => {
             ...channel,
             messages: [
               ...channel.messages,
-              {
-                id: `msg-${uuidv4()}`,
-                content,
-                role,
-                timestamp: new Date()
-              }
+              newMessage
             ]
           };
         }
         return channel;
       })
     );
-  };
+
+    // If the user is logged in and the channel isn't a default one, save the message
+    if (user && !channelId.startsWith('channel-')) {
+      try {
+        await saveMessage(channelId, newMessage);
+        console.log('Message saved to database successfully');
+      } catch (error) {
+        console.error('Error saving message:', error);
+      }
+    }
+  }, [user]);
 
   const saveCurrentChannel = async () => {
     if (!user) {
@@ -100,24 +125,49 @@ export const useChatOperations = () => {
     }
   };
 
-  const createNewChannel = (name: string, description: string) => {
+  const createNewChannel = useCallback(async (name: string, description: string) => {
+    let newChannelId: string;
+    
+    // If the user is logged in, create the channel in the database first
+    if (user) {
+      try {
+        newChannelId = await createChannel(name, description);
+      } catch (error) {
+        console.error('Error creating channel in database:', error);
+        // Fall back to local channel creation if database fails
+        newChannelId = `channel-${uuidv4()}`;
+      }
+    } else {
+      // If user is not logged in, create a local channel
+      newChannelId = `channel-${uuidv4()}`;
+    }
+    
+    const welcomeMessage = {
+      id: `msg-${uuidv4()}`,
+      content: `Welcome to the ${name} channel! How can I help you with ${description.toLowerCase()}?`,
+      role: 'assistant' as 'user' | 'assistant',
+      timestamp: new Date()
+    };
+    
     const newChannel: ChannelType = {
-      id: `channel-${uuidv4()}`,
+      id: newChannelId,
       name,
       description,
-      messages: [
-        {
-          id: `msg-${uuidv4()}`,
-          content: `Welcome to the ${name} channel! How can I help you with ${description.toLowerCase()}?`,
-          role: 'assistant',
-          timestamp: new Date()
-        }
-      ]
+      messages: [welcomeMessage]
     };
 
     setChannels(prev => [newChannel, ...prev]);
     setActiveChannel(newChannel.id);
-  };
+    
+    // If the user is logged in, save the welcome message to the database
+    if (user && !newChannelId.startsWith('channel-')) {
+      try {
+        await saveMessage(newChannelId, welcomeMessage);
+      } catch (error) {
+        console.error('Error saving welcome message:', error);
+      }
+    }
+  }, [user]);
 
   return {
     channels,
