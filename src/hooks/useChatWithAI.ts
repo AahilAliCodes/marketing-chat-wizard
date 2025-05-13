@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
-import { MessageType } from '@/types/chat';
 
 interface AIChatResponse {
   response: string;
@@ -49,39 +48,8 @@ export const useChatWithAI = () => {
     }
   };
 
-  // Stream response function to handle breaking up responses into chunks
-  const streamResponse = async (messages: MessageType[], onChunk: (chunk: string) => void, websiteUrl?: string, campaignType?: string) => {
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-    if (!lastUserMessage) return;
-
-    try {
-      // Use the sendMessageToAI function
-      const response = await sendMessageToAI(websiteUrl || '', lastUserMessage.content, campaignType);
-      
-      if (!response) {
-        throw new Error('Failed to get AI response');
-      }
-      
-      // Simulate streaming by breaking response into chunks
-      const chunks = response.response.match(/.{1,10}/g) || [];
-      
-      // Send each chunk with a small delay to simulate streaming
-      for (const chunk of chunks) {
-        onChunk(chunk);
-        // Small delay between chunks
-        await new Promise(resolve => setTimeout(resolve, 20));
-      }
-      
-      return response;
-    } catch (error) {
-      console.error('Error in streamResponse:', error);
-      throw error;
-    }
-  };
-
   return {
     sendMessageToAI,
-    streamResponse,
     aiResponse,
     isLoading,
     error,
