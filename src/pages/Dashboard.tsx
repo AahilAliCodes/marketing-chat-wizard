@@ -3,7 +3,7 @@ import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/context/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +37,7 @@ const Dashboard = () => {
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   
   // Function to get icon based on platform
@@ -192,6 +193,17 @@ const Dashboard = () => {
     }
   }, [state?.isAnalyzing, state?.websiteUrl, toast]);
 
+  // Handle Reddit logo click - navigate to runs page with subreddit analysis request
+  const handleRedditClick = () => {
+    navigate('/runs', {
+      state: {
+        action: 'analyze_subreddits',
+        websiteUrl: websiteUrl,
+        campaignType: campaignOptions.length > 0 ? campaignOptions[0].title : undefined
+      }
+    });
+  };
+
   // Show loading screen during loading or analysis
   if (isLoading || isAnalyzing) {
     return (
@@ -293,10 +305,8 @@ const Dashboard = () => {
           {/* Reddit logo at the bottom left - only show when no campaign is active */}
           {!activeCampaign && (
             <div className="absolute bottom-4 left-4 z-10">
-              <a 
-                href="https://www.reddit.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <button 
+                onClick={handleRedditClick}
                 className="flex items-center justify-center w-10 h-10 transition-all hover:scale-110"
               >
                 <img 
@@ -304,7 +314,7 @@ const Dashboard = () => {
                   alt="Reddit Logo"
                   className="w-10 h-10 rounded-full shadow-md"
                 />
-              </a>
+              </button>
             </div>
           )}
         </div>

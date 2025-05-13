@@ -7,16 +7,29 @@ import { Loader2, Image, Film, FileText, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import SubredditRecommender from '@/components/SubredditRecommender';
 
 interface LocationState {
   messageContent?: string;
   messageRole?: 'user' | 'assistant';
   timestamp?: Date;
   previousMessage?: string;
+  action?: string;
+  websiteUrl?: string;
+  campaignType?: string;
 }
 
 type ContentType = 'image' | 'video' | 'text' | null;
 type GenerationStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface SubredditRecommendation {
+  name: string;
+  reason: string;
+  postTitle: string;
+  postContent: string;
+  subscribers?: string;
+  engagement?: string;
+}
 
 const Runs = () => {
   const [activeItem, setActiveItem] = useState<string>('runs');
@@ -25,6 +38,11 @@ const Runs = () => {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [status, setStatus] = useState<GenerationStatus>('idle');
   const [originalMessage, setOriginalMessage] = useState<string>('');
+  
+  // Subreddit recommendations state
+  const [isAnalyzingSubreddits, setIsAnalyzingSubreddits] = useState<boolean>(false);
+  const [subredditAnalysisError, setSubredditAnalysisError] = useState<string | null>(null);
+  const [subredditRecommendations, setSubredditRecommendations] = useState<SubredditRecommendation[] | null>(null);
   
   const location = useLocation();
   const { toast } = useToast();
@@ -46,11 +64,16 @@ const Runs = () => {
     return 'text';
   };
   
-  // Process the message from location state
+  // Process the message or action from location state
   useEffect(() => {
     const state = location.state as LocationState;
     
-    if (state?.messageContent) {
+    if (state?.action === 'analyze_subreddits' && state?.websiteUrl) {
+      // Handle subreddit analysis
+      setIsAnalyzingSubreddits(true);
+      analyzeSubreddits(state.websiteUrl, state.campaignType);
+    } else if (state?.messageContent) {
+      // Handle regular content generation
       setOriginalMessage(state.messageContent);
       const detectedType = detectContentType(state.messageContent);
       setContentType(detectedType);
@@ -59,6 +82,42 @@ const Runs = () => {
       handleGenerate(state.messageContent, detectedType);
     }
   }, [location.state]);
+  
+  const analyzeSubreddits = async (websiteUrl: string, campaignType?: string) => {
+    try {
+      setIsAnalyzingSubreddits(true);
+      setSubredditAnalysisError(null);
+
+      // Call the edge function to analyze subreddits
+      const { data, error } = await supabase.functions.invoke('analyze-subreddits', {
+        body: { websiteUrl, campaignType },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to analyze subreddits');
+      }
+
+      setSubredditRecommendations(data.recommendations);
+      toast({
+        title: "Analysis Complete",
+        description: "Subreddit recommendations generated successfully",
+      });
+    } catch (error) {
+      console.error('Subreddit analysis error:', error);
+      setSubredditAnalysisError(error instanceof Error ? error.message : 'An unknown error occurred');
+      
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to analyze subreddits",
+        variant: 'destructive',
+      });
+    } finally {
+      // Keep loading for at least 8 seconds to show the animation
+      setTimeout(() => {
+        setIsAnalyzingSubreddits(false);
+      }, 8000);
+    }
+  };
   
   const handleGenerate = async (message: string, type: ContentType) => {
     if (!message || isGenerating) return;
@@ -214,10 +273,12 @@ const Runs = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold text-marketing-darkPurple">Content Generation</h1>
+            <h1 className="text-2xl font-bold text-marketing-darkPurple">
+              {location.state?.action === 'analyze_subreddits' ? 'Reddit Strategy Assistant' : 'Content Generation'}
+            </h1>
           </div>
           
-          {!isGenerating && contentType && (
+          {!isGenerating && contentType && !location.state?.action && (
             <Button 
               onClick={() => handleGenerate(originalMessage, contentType)}
               className="bg-marketing-purple hover:bg-marketing-purple/90"
@@ -229,29 +290,42 @@ const Runs = () => {
           )}
         </div>
         
-        {originalMessage && (
-          <div className="mb-6 p-4 border bg-white rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              {renderContentTypeIcon()}
-              <h2 className="font-medium">Original Message</h2>
+        {/* Display either subreddit analysis or content generation UI */}
+        {location.state?.action === 'analyze_subreddits' ? (
+          <SubredditRecommender 
+            websiteUrl={location.state?.websiteUrl || ''}
+            campaignType={location.state?.campaignType}
+            isLoading={isAnalyzingSubreddits}
+            error={subredditAnalysisError}
+            results={subredditRecommendations}
+          />
+        ) : (
+          <>
+            {originalMessage && (
+              <div className="mb-6 p-4 border bg-white rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  {renderContentTypeIcon()}
+                  <h2 className="font-medium">Original Message</h2>
+                </div>
+                <p className="text-gray-600">{originalMessage}</p>
+              </div>
+            )}
+            
+            <div className="bg-white rounded-lg shadow mb-6">
+              <div className="p-4 border-b">
+                <h2 className="font-medium">Generated Content</h2>
+                <p className="text-sm text-gray-500">
+                  {contentType === 'image' && 'Using OpenAI DALL-E to generate an image'}
+                  {contentType === 'video' && 'Using OpenAI SORA to generate a video'}
+                  {contentType === 'text' && 'Using OpenAI to generate text content'}
+                </p>
+              </div>
+              <div className="p-6">
+                {renderContent()}
+              </div>
             </div>
-            <p className="text-gray-600">{originalMessage}</p>
-          </div>
+          </>
         )}
-        
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b">
-            <h2 className="font-medium">Generated Content</h2>
-            <p className="text-sm text-gray-500">
-              {contentType === 'image' && 'Using OpenAI DALL-E to generate an image'}
-              {contentType === 'video' && 'Using OpenAI SORA to generate a video'}
-              {contentType === 'text' && 'Using OpenAI to generate text content'}
-            </p>
-          </div>
-          <div className="p-6">
-            {renderContent()}
-          </div>
-        </div>
       </div>
       <Toaster />
     </div>
