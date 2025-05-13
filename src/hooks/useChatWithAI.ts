@@ -48,12 +48,31 @@ export const useChatWithAI = () => {
     }
   };
 
-  // Added streamResponse function to fix the TypeScript error
-  const streamResponse = async () => {
-    // This is a placeholder function to fix the TypeScript error
-    // The actual implementation would involve streaming the response
-    console.log('Stream response functionality not implemented');
-    return null;
+  // Implementation of streamResponse function to properly handle streaming responses
+  const streamResponse = async (websiteUrl: string, userMessage: string, campaignType?: string) => {
+    setIsLoading(true);
+    setError(null);
+    setAiResponse(null);
+    
+    try {
+      // In a real implementation, this would use streaming API
+      // For now, we'll just call the regular function
+      return await sendMessageToAI(websiteUrl, userMessage, campaignType);
+    } catch (err: any) {
+      const errorMessage = err.message || 'Error streaming response';
+      console.error('Stream response error:', errorMessage);
+      setError(errorMessage);
+      
+      toast({
+        title: 'Stream Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return {

@@ -50,25 +50,34 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          campaign_type: string | null
           channel_id: string
           content: string
           created_at: string
           id: string
           role: string
+          user_id: string | null
+          website_url: string | null
         }
         Insert: {
+          campaign_type?: string | null
           channel_id: string
           content: string
           created_at?: string
           id?: string
           role: string
+          user_id?: string | null
+          website_url?: string | null
         }
         Update: {
+          campaign_type?: string | null
           channel_id?: string
           content?: string
           created_at?: string
           id?: string
           role?: string
+          user_id?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {

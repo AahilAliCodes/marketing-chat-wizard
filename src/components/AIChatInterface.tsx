@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, SendHorizontal, Rocket } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,8 +11,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
-import ChatInput from './ChatInput'; // Fixed import
-import ChatMessage from './ChatMessage'; // Fixed import
+import ChatInput from './ChatInput';
+import ChatMessage from './ChatMessage';
+import { getUserMessagesByWebsiteAndCampaign, saveDirectMessage } from '@/services/ChatService';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -189,12 +190,11 @@ const AnimatedRocket: React.FC = () => {
 const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignType }) => {
   const [userMessage, setUserMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const { sendMessageToAI, isLoading } = useChatWithAI();
+  const { sendMessageToAI, streamResponse, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [channelId, setChannelId] = useState<string | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState<string>('');
 
   const getCampaignIcon = () => {
@@ -216,74 +216,47 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     
     setWelcomeMessage(initialWelcomeMessage);
     
-    setChatHistory([{
-      id: 'welcome',
-      role: 'BLASTari',
-      content: initialWelcomeMessage,
-      timestamp: new Date()
-    }]);
-    
-    // If user is logged in, create a new channel or get existing channel
+    // If user is logged in, load previous messages for this website/campaign combination
+    // Otherwise, show the welcome message
     if (user) {
-      // Try to load previous messages for this website/campaign combination
       loadPreviousMessages();
+    } else {
+      setChatHistory([{
+        id: 'welcome',
+        role: 'BLASTari',
+        content: initialWelcomeMessage,
+        timestamp: new Date()
+      }]);
     }
   }, [websiteUrl, campaignType, user]);
 
-  // New function to load previous messages for this website/campaign
+  // Load previous messages for this website/campaign
   const loadPreviousMessages = async () => {
     if (!user) return;
     
     try {
-      // First, check if we have messages for this website/campaign combination
-      const { data: messages, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('website_url', websiteUrl)
-        .eq('campaign_type', campaignType || 'general')
-        .order('created_at', { ascending: true });
+      const previousMessages = await getUserMessagesByWebsiteAndCampaign(websiteUrl, campaignType);
       
-      if (error) {
-        console.error('Error fetching previous messages:', error);
-        return;
-      }
-      
-      if (messages && messages.length > 0) {
-        // Convert the messages to our format
-        const formattedMessages = messages.map(msg => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'BLASTari',
-          content: msg.content,
-          timestamp: new Date(msg.created_at)
-        }));
-        
-        setChatHistory(formattedMessages);
+      if (previousMessages && previousMessages.length > 0) {
+        setChatHistory(previousMessages);
+      } else {
+        // If no previous messages, show the welcome message
+        setChatHistory([{
+          id: 'welcome',
+          role: 'BLASTari',
+          content: welcomeMessage,
+          timestamp: new Date()
+        }]);
       }
     } catch (err) {
-      console.error('Error in loadPreviousMessages:', err);
-    }
-  };
-
-  const saveMessageToSupabase = async (messageId: string, role: string, content: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert({
-          id: messageId,
-          role: role,
-          content: content,
-          website_url: websiteUrl,
-          campaign_type: campaignType || 'general',
-          user_id: user.id
-        });
-
-      if (error) {
-        console.error('Error saving message:', error);
-      }
-    } catch (error) {
-      console.error('Error in saveMessageToSupabase:', error);
+      console.error('Error loading previous messages:', err);
+      // Show welcome message if we couldn't load previous messages
+      setChatHistory([{
+        id: 'welcome',
+        role: 'BLASTari',
+        content: welcomeMessage,
+        timestamp: new Date()
+      }]);
     }
   };
 
@@ -306,7 +279,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     
     // Save user message to Supabase if user is logged in
     if (user) {
-      await saveMessageToSupabase(userMessageId, 'user', userMessage);
+      try {
+        await saveDirectMessage(newUserMessage, websiteUrl, campaignType);
+      } catch (error) {
+        console.error('Error saving user message:', error);
+      }
     }
     
     setUserMessage('');
@@ -327,7 +304,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       
       // Save AI response to Supabase if user is logged in
       if (user) {
-        await saveMessageToSupabase(aiMessageId, 'assistant', response.response);
+        try {
+          await saveDirectMessage(aiMessage, websiteUrl, campaignType);
+        } catch (error) {
+          console.error('Error saving AI response:', error);
+        }
       }
     }
   };

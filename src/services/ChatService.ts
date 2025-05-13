@@ -127,8 +127,8 @@ export const saveMessage = async (channelId: string, message: MessageType, websi
     throw new Error('User not authenticated');
   }
 
-  // Create the message object with additional fields if provided
-  const messageObject: any = {
+  // Create the message object
+  const messageData = {
     id: message.id,
     channel_id: channelId,
     content: message.content,
@@ -136,19 +136,10 @@ export const saveMessage = async (channelId: string, message: MessageType, websi
     created_at: message.timestamp.toISOString(),
     user_id: userData.user.id
   };
-  
-  // Add optional fields if provided
-  if (websiteUrl) {
-    messageObject.website_url = websiteUrl;
-  }
-  
-  if (campaignType) {
-    messageObject.campaign_type = campaignType;
-  }
 
   const { error: messageError } = await supabase
     .from('chat_messages')
-    .insert(messageObject);
+    .insert(messageData);
 
   if (messageError) {
     console.error('Error saving message:', messageError);
@@ -166,7 +157,7 @@ export const getUserMessagesByWebsiteAndCampaign = async (websiteUrl: string, ca
     throw new Error('User not authenticated');
   }
 
-  const query = supabase
+  let query = supabase
     .from('chat_messages')
     .select('*')
     .eq('website_url', websiteUrl)
@@ -174,7 +165,7 @@ export const getUserMessagesByWebsiteAndCampaign = async (websiteUrl: string, ca
   
   // Add campaign filter if provided
   if (campaignType) {
-    query.eq('campaign_type', campaignType);
+    query = query.eq('campaign_type', campaignType);
   }
   
   const { data: messages, error } = await query
@@ -220,4 +211,36 @@ export const createChannel = async (name: string, description: string) => {
   }
 
   return data.id;
+};
+
+// New function to save messages with website url and campaign type
+export const saveDirectMessage = async (message: MessageType, websiteUrl: string, campaignType?: string) => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Create the message object with additional fields
+  const messageData = {
+    id: message.id,
+    channel_id: 'direct', // Using a placeholder value since we're not using channels
+    content: message.content,
+    role: message.role,
+    created_at: message.timestamp.toISOString(),
+    user_id: userData.user.id,
+    website_url: websiteUrl,
+    campaign_type: campaignType || 'general'
+  };
+
+  const { error: messageError } = await supabase
+    .from('chat_messages')
+    .insert(messageData);
+
+  if (messageError) {
+    console.error('Error saving direct message:', messageError);
+    throw messageError;
+  }
+  
+  return true;
 };
