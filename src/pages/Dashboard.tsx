@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -227,11 +228,6 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <p className="text-gray-600 mt-2 md:mt-0">Website: {websiteUrl}</p>
-              <img 
-                src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
-                alt="Reddit Logo"
-                className="w-8 h-8 rounded-full"
-              />
             </div>
           </div>
           
@@ -294,6 +290,22 @@ const Dashboard = () => {
               )}
             </div>
           )}
+          
+          {/* Reddit logo at the bottom left */}
+          <div className="absolute bottom-4 left-4 z-10">
+            <a 
+              href="https://www.reddit.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-10 h-10 transition-all hover:scale-110"
+            >
+              <img 
+                src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
+                alt="Reddit Logo"
+                className="w-10 h-10 rounded-full shadow-md"
+              />
+            </a>
+          </div>
         </div>
       ) : (
         null
