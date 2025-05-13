@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ChannelType, MessageType } from "@/types/chat";
 import { v4 as uuidv4 } from 'uuid';
@@ -117,7 +118,7 @@ export const getFullChannel = async (channelId: string): Promise<ChannelType> =>
   };
 };
 
-// New function to save a single message directly to the database
+// Save a single message directly to the database without requiring a channel
 export const saveMessage = async (channelId: string, message: MessageType) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   
@@ -137,6 +138,34 @@ export const saveMessage = async (channelId: string, message: MessageType) => {
 
   if (messageError) {
     console.error('Error saving message:', messageError);
+    throw messageError;
+  }
+  
+  return true;
+};
+
+// New function to directly save a message for a logged-in user without a channel
+export const saveMessageDirectly = async (message: MessageType) => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    throw new Error('User not authenticated');
+  }
+
+  const defaultChannelId = `default-${userData.user.id}`;
+
+  const { error: messageError } = await supabase
+    .from('chat_messages')
+    .insert({
+      id: message.id || uuidv4(),
+      channel_id: defaultChannelId,
+      content: message.content,
+      role: message.role,
+      created_at: message.timestamp.toISOString()
+    });
+
+  if (messageError) {
+    console.error('Error saving message directly:', messageError);
     throw messageError;
   }
   
