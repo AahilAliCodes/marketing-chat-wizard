@@ -44,7 +44,6 @@ const Auth = () => {
         await signIn(values.email, values.password);
       } else {
         await signUp(values.email, values.password);
-        setActiveTab("signin");
         form.reset();
       }
     } catch (error) {

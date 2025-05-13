@@ -42,32 +42,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      // Updated to disable email confirmation
-      const { error } = await supabase.auth.signUp({ 
-        email, 
+      // Sign up without email verification
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
-            email: email
+            email
           }
         }
       });
       
       if (error) throw error;
       
-      // Automatically sign in after sign up since we're not requiring email verification
-      const { error: signInError } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password 
-      });
-      
-      if (signInError) throw signInError;
-      
-      toast({
-        title: "Account created",
-        description: "You have been automatically signed in"
-      });
+      // Instead of automatic sign-in, use the session from the signUp response
+      if (data.session) {
+        toast({
+          title: "Account created",
+          description: "You have been signed in automatically"
+        });
+      } else {
+        // If no session is returned, use regular sign-in as fallback
+        await signIn(email, password);
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
