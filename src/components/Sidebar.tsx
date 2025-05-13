@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PieChart, LogOut, LogIn, LayoutDashboard } from 'lucide-react';
@@ -23,21 +22,25 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
   };
 
   return (
-    <div className="h-screen w-16 md:w-64 bg-marketing-purple flex flex-col overflow-hidden">
-      <div className="p-4 border-b border-white/20 flex justify-center md:justify-start">
+    <div className="h-screen w-12 md:w-40 bg-marketing-purple flex flex-col overflow-hidden">
+      <div className="p-2 border-b border-white/20 flex justify-center md:justify-start">
         <Link to="/" className="flex items-center space-x-2">
-          <div className="flex items-center justify-center w-8 h-8 bg-white rounded-md">
-            <span className="text-marketing-purple font-bold">M</span>
+          <div className="flex items-center justify-center w-7 h-7 bg-white rounded-md">
+            <span className="text-marketing-purple font-bold">B</span>
           </div>
-          <span className="text-white font-bold text-xl hidden md:block">Marketing AI</span>
+          <span className="text-white font-bold text-lg hidden md:block">BLASTari</span>
         </Link>
       </div>
       <div className="flex flex-col flex-1 overflow-y-auto">
-        <div className="p-2">
+        <div className="p-1">
           <Button
             onClick={() => {
               setActiveItem('dashboard');
-              navigate('/dashboard');
+              if (window.location.pathname !== '/dashboard') {
+                navigate('/dashboard');
+              } else {
+                navigate('/dashboard', { replace: true });
+              }
             }}
             variant="ghost"
             className={`w-full justify-start mb-1 ${

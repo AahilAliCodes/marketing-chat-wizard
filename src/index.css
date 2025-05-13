@@ -143,3 +143,18 @@
 .collapsible-content[data-state='closed'] {
   animation: slideUp 300ms ease-out;
 }
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 1s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes pulseColor {
+  0%, 100% { color: #7c3aed; }
+  50% { color: #a78bfa; }
+}
+.animate-pulse-color {
+  animation: pulseColor 1.5s infinite;
+}

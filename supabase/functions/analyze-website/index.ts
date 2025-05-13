@@ -1,10 +1,13 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
+// @ts-ignore
+import { serve } from "https://deno.land/std/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.2/+esm";
 
 const supabaseUrl = "https://phgrwmrxcryhkkmjkpqc.supabase.co";
+// @ts-ignore
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// @ts-ignore
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "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";
 
 const corsHeaders = {

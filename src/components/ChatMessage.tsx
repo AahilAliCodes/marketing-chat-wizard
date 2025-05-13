@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { MessageType } from '@/types/chat';
@@ -21,7 +20,8 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       state: { 
         messageContent: message.content,
         messageRole: message.role,
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
+        previousMessage: message.previousMessage
       } 
     });
     
@@ -45,14 +45,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       )}>
         <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         
-        <button
-          onClick={handlePlayClick}
-          className="ml-2 p-1 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
-          title="Generate content from this message"
-          aria-label="Generate content"
-        >
-          <Play size={14} />
-        </button>
+        {!isUser && (
+          <button
+            onClick={handlePlayClick}
+            className="ml-2 p-1 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+            title="Generate content from this message"
+            aria-label="Generate content"
+          >
+            <Play size={14} />
+          </button>
+        )}
       </div>
     </div>
   );

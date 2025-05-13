@@ -1,7 +1,8 @@
 
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-
+// @ts-ignore
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 const corsHeaders = {
@@ -118,7 +119,7 @@ async function generateText(prompt: string) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a helpful assistant that generates content based on user prompts." },
+          { role: "system", content: "You are a helpful marketing assistant that reccomends marketing strategies based on user prompts. Keep your responses concise and to the point." },
           { role: "user", content: prompt }
         ],
       }),

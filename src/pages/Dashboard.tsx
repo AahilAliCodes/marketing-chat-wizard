@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
-import ChatArea from '@/components/ChatArea';
 import { ChatProvider } from '@/context/ChatContext';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/context/AuthContext';
@@ -10,8 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -22,6 +20,11 @@ interface CampaignOption {
   id: string;
   title: string;
   description: string;
+  platform: string;
+  insights: string[];
+  roi: string;
+  difficulty: string;
+  budget: string;
   icon: React.ReactNode;
 }
 
@@ -31,42 +34,56 @@ const Dashboard = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
-  // Store expanded state for each card individually
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const { user } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
   
-  // Define campaign options with better icons
-  const campaignOptions: CampaignOption[] = [
-    {
-      id: 'discord',
-      title: 'Community Building on Discord',
-      description: 'Set up a Discord server to engage users right away, fostering immediate interaction and support.',
-      icon: <Users className="h-6 w-6" />
-    },
-    {
-      id: 'tiktok',
-      title: 'Create Viral Content on TikTok',
-      description: 'Develop short, engaging videos that highlight user interactions and drive traffic quickly.',
-      icon: <Video className="h-6 w-6" />
-    },
-    {
-      id: 'contentMarketing',
-      title: 'Content Marketing',
-      description: 'Start publishing insightful articles on Medium addressing common queries and support topics.',
-      icon: <FileText className="h-6 w-6" />
-    }
-  ];
-  
-  // Toggle expanded state for a specific card only
-  const toggleCardExpand = (cardId: string) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [cardId]: !prev[cardId]
-    }));
+  // Function to get icon based on platform
+  const getPlatformIcon = (platform: string) => {
+    const platformLower = platform.toLowerCase();
+    if (platformLower.includes('discord')) return <Users className="h-6 w-6" />;
+    if (platformLower.includes('tiktok') || platformLower.includes('video')) return <Video className="h-6 w-6" />;
+    if (platformLower.includes('content') || platformLower.includes('blog') || platformLower.includes('medium')) return <FileText className="h-6 w-6" />;
+    return <MessageSquare className="h-6 w-6" />;
   };
-  
+
+  // Fetch campaign recommendations from Supabase
+  const fetchCampaignRecommendations = async (url: string) => {
+    try {
+      const { data: recommendations, error } = await supabase
+        .from('campaign_recommendations')
+        .select('*')
+        .eq('website_url', url);
+
+      if (error) {
+        throw error;
+      }
+
+      if (recommendations) {
+        const formattedRecommendations = recommendations.map(rec => ({
+          id: rec.id,
+          title: rec.title,
+          description: rec.description,
+          platform: rec.platform,
+          insights: rec.insights,
+          roi: rec.roi,
+          difficulty: rec.difficulty,
+          budget: rec.budget,
+          icon: getPlatformIcon(rec.platform)
+        }));
+        setCampaignOptions(formattedRecommendations);
+      }
+    } catch (error) {
+      console.error('Error fetching campaign recommendations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch campaign recommendations',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Get state from location if available
   const state = location.state as LocationState;
 
@@ -94,6 +111,8 @@ const Dashboard = () => {
             });
             
             console.log('Using existing analysis:', existingAnalysis);
+            // Fetch campaign recommendations for existing analysis
+            await fetchCampaignRecommendations(state.websiteUrl);
           } else {
             // Website not yet analyzed, call the edge function
             const { data, error } = await supabase.functions.invoke('analyze-website', {
@@ -109,6 +128,9 @@ const Dashboard = () => {
               title: 'Analysis Complete',
               description: 'Website has been analyzed and recommendations generated',
             });
+
+            // Fetch the newly generated recommendations
+            await fetchCampaignRecommendations(state.websiteUrl);
           }
           
         } catch (error: any) {
@@ -152,6 +174,7 @@ const Dashboard = () => {
           
           if (recentAnalysis) {
             setWebsiteUrl(recentAnalysis.website_url);
+            await fetchCampaignRecommendations(recentAnalysis.website_url);
           }
         } catch (error) {
           console.error('Error fetching recent website:', error);
@@ -188,60 +211,10 @@ const Dashboard = () => {
       
       {activeItem === 'home' ? (
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="p-6 border-b">
-            <h1 className="text-3xl font-bold mb-2">Campaign Recommendations</h1>
-            <p className="text-gray-600 mb-8">Website: {websiteUrl}</p>
-            
-            {!activeCampaign ? (
-              <div className="grid md:grid-cols-3 gap-8 mb-8">
-                {campaignOptions.map((campaign) => (
-                  <Collapsible
-                    key={campaign.id}
-                    open={expandedCards[campaign.id] || false}
-                    onOpenChange={() => {}} // Remove automatic toggle here
-                    className="relative flex flex-col border-2 rounded-lg shadow-sm hover:shadow-md transition-all overflow-hidden"
-                  >
-                    <div 
-                      onClick={() => setActiveCampaign(campaign.id)}
-                      className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/5 transition-all cursor-pointer"
-                    >
-                      <div className="bg-marketing-purple/10 p-4 rounded-full mb-6">
-                        {campaign.icon}
-                      </div>
-                      <h3 className="text-xl font-medium mb-3">{campaign.title}</h3>
-                      <div className={`text-sm text-gray-500 w-full ${expandedCards[campaign.id] ? '' : 'line-clamp-2'}`}>
-                        {campaign.description}
-                      </div>
-                    </div>
-                    
-                    {campaign.description.length > 60 && (
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCardExpand(campaign.id);
-                          }}
-                          className="absolute bottom-1 right-1 h-7 w-7 p-0"
-                        >
-                          {expandedCards[campaign.id] ? 
-                            <ChevronUp className="h-4 w-4" /> : 
-                            <ChevronDown className="h-4 w-4" />}
-                        </Button>
-                      </CollapsibleTrigger>
-                    )}
-                    
-                    <CollapsibleContent className="px-8 pb-6">
-                      <div className="text-sm text-gray-500 pt-2 border-t mt-2">
-                        <p>Start this campaign to get detailed AI assistance for {campaign.title.toLowerCase()}.</p>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
+          <div className="p-6 border-b flex flex-col md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4 mb-2 md:mb-0">
+              <h1 className="text-3xl font-bold">Campaign Recommendations</h1>
+              {activeCampaign && (
                 <Button
                   variant="outline"
                   onClick={() => setActiveCampaign(null)}
@@ -250,32 +223,73 @@ const Dashboard = () => {
                   <ChevronLeft className="h-4 w-4" />
                   Back to All Campaigns
                 </Button>
-                
-                <Button
-                  variant="default"
-                  className="whitespace-nowrap"
-                >
-                  {campaignOptions.find(c => c.id === activeCampaign)?.title}
-                </Button>
-              </div>
-            )}
+              )}
+            </div>
+            <p className="text-gray-600 mt-2 md:mt-0">Website: {websiteUrl}</p>
           </div>
           
-          <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
-            {activeCampaign && (
-              <div className="bg-white rounded-lg shadow-sm border p-6 h-full">
-                <AIChatInterface 
-                  websiteUrl={websiteUrl} 
-                  campaignType={campaignOptions.find(c => c.id === activeCampaign)?.title || undefined} 
-                />
-              </div>
-            )}
-          </div>
+          {!activeCampaign ? (
+            <div className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
+              {campaignOptions.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="relative flex flex-col border-2 rounded-2xl shadow-[0_0_16px_0_rgba(128,90,213,0.25)] hover:shadow-[0_0_32px_4px_rgba(128,90,213,0.45)] transition-all overflow-hidden bg-gradient-to-br from-white via-purple-50 to-purple-100 border-marketing-purple/30"
+                >
+                  <div 
+                    onClick={() => setActiveCampaign(campaign.id)}
+                    className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/10 transition-all cursor-pointer"
+                  >
+                    <div className="bg-marketing-purple/10 p-4 rounded-full mb-6 shadow-[0_0_12px_0_rgba(128,90,213,0.15)]">
+                      {campaign.icon}
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-marketing-purple drop-shadow">{campaign.title}</h3>
+                    <div className="text-sm text-gray-500 mb-4">
+                      <span className="font-medium">Platform:</span> {campaign.platform}
+                    </div>
+                    <div className="text-sm text-gray-600 w-full mb-4">{campaign.description}</div>
+                  </div>
+                  
+                  <div className="px-8 pb-6">
+                    <div className="text-sm text-gray-500 pt-2 border-t mt-2">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <span className="font-medium">ROI:</span> {campaign.roi}
+                        </div>
+                        <div>
+                          <span className="font-medium">Difficulty:</span> {campaign.difficulty}
+                        </div>
+                        <div>
+                          <span className="font-medium">Budget:</span> {campaign.budget}
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <span className="font-medium">Key Insights:</span>
+                        <ul className="list-disc list-inside mt-2">
+                          {campaign.insights.map((insight, index) => (
+                            <li key={index} className="text-gray-700">{insight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+              {activeCampaign && (
+                <div className="bg-white rounded-lg shadow-sm border p-6 h-full">
+                  <AIChatInterface 
+                    websiteUrl={websiteUrl} 
+                    campaignType={campaignOptions.find(c => c.id === activeCampaign)?.title || undefined} 
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
-        <ChatProvider>
-          <ChatArea />
-        </ChatProvider>
+        null
       )}
       
       <Toaster />

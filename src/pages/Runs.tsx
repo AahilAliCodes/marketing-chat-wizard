@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Toaster } from '@/components/ui/toaster';
@@ -13,6 +12,7 @@ interface LocationState {
   messageContent?: string;
   messageRole?: 'user' | 'assistant';
   timestamp?: Date;
+  previousMessage?: string;
 }
 
 type ContentType = 'image' | 'video' | 'text' | null;
@@ -32,8 +32,8 @@ const Runs = () => {
   
   // Detect content type from message
   const detectContentType = (message: string): ContentType => {
-    const imageKeywords = ['image', 'picture', 'photo', 'draw', 'diagram', 'generate an image', 'make a picture'];
-    const videoKeywords = ['video', 'animation', 'animate', 'film', 'movie', 'make a video', 'create a video'];
+    const imageKeywords = ['image', 'picture', 'photo', 'draw', 'diagram', 'generate an image', 'make a picture', 'create an image', 'design', 'illustration'];
+    const videoKeywords = ['video', 'animation', 'animate', 'film', 'movie', 'make a video', 'create a video', 'produce a video', 'record', 'tiktok', 'reel'];
     
     const lowerMessage = message.toLowerCase();
     
@@ -68,16 +68,18 @@ const Runs = () => {
     
     try {
       let result;
+      const state = location.state as LocationState;
+      const context = state.previousMessage ? `Context: ${state.previousMessage}\n\nRequest: ${message}` : message;
       
       switch (type) {
         case 'image':
-          result = await generateImage(message);
+          result = await generateImage(context);
           break;
         case 'video':
-          result = await generateVideo(message);
+          result = await generateVideo(context);
           break;
         case 'text':
-          result = await generateText(message);
+          result = await generateText(context);
           break;
         default:
           throw new Error('Invalid content type');

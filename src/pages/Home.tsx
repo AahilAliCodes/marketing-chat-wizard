@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send } from 'lucide-react';
@@ -65,12 +64,12 @@ const Home = () => {
       <header className="container mx-auto p-4 flex justify-between items-center">
         <div className="flex items-center">
           <div className="flex items-center justify-center w-8 h-8 bg-marketing-purple rounded-md mr-2">
-            <span className="text-white font-bold">M</span>
+            <span className="text-white font-bold">B.</span>
           </div>
-          <span className="text-xl font-bold">MarketGPT</span>
+          <span className="text-xl font-bold">BLASTari</span>
         </div>
         <a href="/auth" className="text-marketing-purple font-medium">
-          Sign In
+          Account
         </a>
       </header>
 
@@ -83,9 +82,9 @@ const Home = () => {
           Launch <span className="text-marketing-purple">high-performing</span> ad campaigns in seconds
         </h1>
         
-        <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-3xl">
+        {/* <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-3xl">
           MarketGPT uses AI to analyze your business needs and create optimized marketing strategies tailored to your specific goals.
-        </p>
+        </p> */}
         
         <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8">
           <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">

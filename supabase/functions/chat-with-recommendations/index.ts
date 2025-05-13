@@ -1,10 +1,14 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.2";
-
+// @ts-ignore
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || "https://phgrwmrxcryhkkmjkpqc.supabase.co";
+// @ts-ignore
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || "";
+// @ts-ignore
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY') || "";
 
 const corsHeaders = {
@@ -81,26 +85,7 @@ serve(async (req) => {
     };
 
     // Create personalized system prompt based on campaign type
-    let systemPrompt = `You are a marketing assistant that provides answers based on campaign recommendations data for ${websiteUrl}.`;
-    
-    if (campaignType === "Community Building on Discord") {
-      systemPrompt = `You are a Discord community building specialist focused on helping ${websiteUrl} create and grow a thriving Discord community. 
-      Provide specific, actionable advice on channel organization, moderation strategies, engagement activities, and community growth. 
-      Include Discord-specific features and best practices. Make recommendations relevant to ${websiteUrl}'s target audience.
-      Always be encouraging, practical, and focused on building sustainable communities.`;
-    } 
-    else if (campaignType === "Create Viral Content on TikTok") {
-      systemPrompt = `You are a TikTok content marketing specialist helping ${websiteUrl} create viral, engaging content.
-      Provide specific, actionable advice on video concepts, trending sounds, hashtags, posting times, and engagement strategies.
-      Include TikTok-specific features, trends, and algorithm insights. Make recommendations relevant to ${websiteUrl}'s target audience.
-      Be creative, enthusiastic, and focused on achieving high engagement metrics.`;
-    }
-    else if (campaignType === "Content Marketing") {
-      systemPrompt = `You are a content marketing strategist helping ${websiteUrl} develop high-quality articles, blogs, and resources.
-      Provide specific, actionable advice on content planning, SEO optimization, publishing platforms, and audience targeting.
-      Include content marketing best practices, topic ideation, and distribution strategies. Make recommendations relevant to ${websiteUrl}'s target audience.
-      Be thorough, strategic, and focused on creating valuable content that converts.`;
-    }
+    let systemPrompt = `You are a marketing assistant that provides short and concise answers based on campaign recommendations data for ${websiteUrl}.`;
     
     systemPrompt += ` Answer user questions specifically and directly related to the provided data.
       If you don't have enough information, say so rather than making things up.`;
@@ -121,10 +106,11 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Here is the marketing data for ${websiteUrl}:\n${JSON.stringify(context, null, 2)}\n\nUser question: ${userMessage}`
+            content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}`
           }
         ],
-        temperature: 0.7,
+        temperature: 0.5,
+        max_tokens: 512
       }),
     });
 
