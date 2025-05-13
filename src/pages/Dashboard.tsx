@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft, ExternalLink, Github, Twitter, Reddit } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, ExternalLink, Github, Twitter, Share2 } from 'lucide-react';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -288,7 +288,7 @@ const Dashboard = () => {
             </div>
           )}
           
-          {/* Reddit icon at the bottom */}
+          {/* Reddit-like social icon at the bottom */}
           <div className="absolute bottom-4 right-4">
             <a 
               href="https://www.reddit.com" 
@@ -296,7 +296,7 @@ const Dashboard = () => {
               rel="noopener noreferrer"
               className="flex items-center justify-center w-10 h-10 rounded-full bg-[#ea384c] hover:bg-[#ff5414] transition-colors shadow-md"
             >
-              <Reddit size={20} color="white" />
+              <Share2 size={20} color="white" />
             </a>
           </div>
         </div>
