@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,15 +7,20 @@ import { Loader2 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Auth = () => {
-  const { user, signInWithGoogle, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, loading } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+  const [formLoading, setFormLoading] = useState(false);
 
   // Handle OAuth callback
   useEffect(() => {
-    // Check if this is a redirect from OAuth
     const handleOAuthCallback = async () => {
       const { data, error } = await supabase.auth.getSession();
       
@@ -38,6 +43,21 @@ const Auth = () => {
     handleOAuthCallback();
   }, [toast]);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    
+    try {
+      if (isLogin) {
+        await signInWithEmail(email, password);
+      } else {
+        await signUpWithEmail(email, password);
+      }
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -59,6 +79,60 @@ const Auth = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Email/Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full bg-marketing-purple hover:bg-purple-700"
+              disabled={formLoading}
+            >
+              {formLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {isLogin ? 'Sign In' : 'Sign Up'}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <button
+              onClick={() => setIsLogin(!isLogin)} 
+              className="text-sm text-marketing-purple hover:underline"
+            >
+              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
           <Button
             onClick={signInWithGoogle}
             className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
@@ -67,18 +141,8 @@ const Auth = () => {
             Sign in with Google
           </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-2 text-gray-500">No account setup required</span>
-            </div>
-          </div>
-
           <p className="text-center text-sm text-gray-500">
-            We use Google authentication to provide a secure and seamless experience.
-            Your chats will be saved to your account automatically.
+            By signing in, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>
       </div>

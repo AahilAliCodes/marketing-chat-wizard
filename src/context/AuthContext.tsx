@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 type AuthContextType = {
   session: Session | null;
   user: User | null;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -38,6 +40,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth`
+        }
+      });
+      
+      if (error) throw error;
+
+      toast({
+        title: "Sign up successful",
+        description: "Please check your email for verification instructions."
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign up error",
+        description: error.message
+      });
+      console.error("Sign up error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+
+      toast({
+        title: "Signed in",
+        description: "You have been successfully signed in"
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign in error",
+        description: error.message
+      });
+      console.error("Sign in error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const signInWithGoogle = async () => {
     try {
@@ -86,6 +143,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     session,
     user,
+    signInWithEmail,
+    signUpWithEmail,
     signInWithGoogle,
     signOut,
     loading
