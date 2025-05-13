@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ChatInput } from './ChatInput';
-import { ChatMessage } from './ChatMessage';
+import ChatInput from './ChatInput';
+import ChatMessage from './ChatMessage';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { useToast } from '@/hooks/use-toast';
 import { MessageType } from '@/types/chat';
@@ -24,7 +24,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { streamResponse } = useChatWithAI();
+  const { sendMessageToAI, isLoading } = useChatWithAI();
   
   // Function to save a message to Supabase
   const saveMessage = async (message: MessageType) => {
@@ -62,6 +62,36 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Stream response function to simulate streaming AI response
+  const streamResponse = async (messages: MessageType[], onChunk: (chunk: string) => void, websiteUrl?: string, campaignType?: string) => {
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    if (!lastUserMessage) return;
+
+    try {
+      // Use the existing sendMessageToAI function
+      const response = await sendMessageToAI(websiteUrl || '', lastUserMessage.content, campaignType);
+      
+      if (!response) {
+        throw new Error('Failed to get AI response');
+      }
+      
+      // Simulate streaming by breaking response into chunks
+      const chunks = response.response.match(/.{1,10}/g) || [];
+      
+      // Send each chunk with a small delay to simulate streaming
+      for (const chunk of chunks) {
+        onChunk(chunk);
+        // Small delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Error in streamResponse:', error);
+      throw error;
+    }
   };
 
   const handleSendMessage = async (content: string) => {
