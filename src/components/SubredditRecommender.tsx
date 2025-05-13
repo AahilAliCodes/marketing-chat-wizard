@@ -4,6 +4,13 @@ import { Bot, Brain, MessageSquare, List, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 interface SubredditRecommendation {
   name: string;
@@ -20,6 +27,8 @@ interface SubredditRecommenderProps {
   isLoading: boolean;
   error: string | null;
   results: SubredditRecommendation[] | null;
+  availableCampaigns: Array<{id: string, title: string}>;
+  onCampaignChange?: (campaignType: string) => void;
 }
 
 const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
@@ -27,7 +36,9 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
   campaignType,
   isLoading,
   error,
-  results
+  results,
+  availableCampaigns = [],
+  onCampaignChange
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const steps = [
@@ -49,6 +60,12 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
       setCurrentStep(steps.length - 1);
     }
   }, [isLoading]);
+
+  const handleCampaignChange = (value: string) => {
+    if (onCampaignChange) {
+      onCampaignChange(value);
+    }
+  };
 
   if (error) {
     return (
@@ -81,7 +98,26 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
               </div>
               <div className="bg-gray-100 p-2 rounded">
                 <p className="text-xs font-medium text-gray-500">Campaign Focus</p>
-                <p className="text-sm truncate">{campaignType || "General Marketing"}</p>
+                {availableCampaigns.length > 0 ? (
+                  <Select
+                    value={campaignType}
+                    onValueChange={handleCampaignChange}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-8 text-sm bg-white">
+                      <SelectValue placeholder="Select campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCampaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.title}>
+                          {campaign.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm truncate">{campaignType || "General Marketing"}</p>
+                )}
               </div>
             </div>
           </div>

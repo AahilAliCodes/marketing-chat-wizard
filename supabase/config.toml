@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.analyze-subreddits]
 verify_jwt = true
+
+[functions.analyze-website] 
+verify_jwt = true

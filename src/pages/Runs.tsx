@@ -31,6 +31,18 @@ interface SubredditRecommendation {
   engagement?: string;
 }
 
+interface CampaignOption {
+  id: string;
+  title: string;
+  description: string;
+  platform: string;
+  insights: string[];
+  roi: string;
+  difficulty: string;
+  budget: string;
+  icon?: React.ReactNode;
+}
+
 const Runs = () => {
   const [activeItem, setActiveItem] = useState<string>('runs');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -43,6 +55,8 @@ const Runs = () => {
   const [isAnalyzingSubreddits, setIsAnalyzingSubreddits] = useState<boolean>(false);
   const [subredditAnalysisError, setSubredditAnalysisError] = useState<string | null>(null);
   const [subredditRecommendations, setSubredditRecommendations] = useState<SubredditRecommendation[] | null>(null);
+  const [selectedCampaignType, setSelectedCampaignType] = useState<string | undefined>(undefined);
+  const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   
   const location = useLocation();
   const { toast } = useToast();
@@ -64,6 +78,45 @@ const Runs = () => {
     return 'text';
   };
   
+  // Fetch campaign options for a website
+  const fetchCampaignOptions = async (websiteUrl: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('campaign_recommendations')
+        .select('*')
+        .eq('website_url', websiteUrl);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        const options = data.map(rec => ({
+          id: rec.id,
+          title: rec.title,
+          description: rec.description,
+          platform: rec.platform,
+          insights: rec.insights,
+          roi: rec.roi,
+          difficulty: rec.difficulty,
+          budget: rec.budget
+        }));
+        
+        setCampaignOptions(options);
+        
+        // Set the selected campaign type if provided in state or use the first option
+        const state = location.state as LocationState;
+        if (state?.campaignType) {
+          setSelectedCampaignType(state.campaignType);
+        } else if (options.length > 0) {
+          setSelectedCampaignType(options[0].title);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching campaign options:', error);
+    }
+  };
+  
   // Process the message or action from location state
   useEffect(() => {
     const state = location.state as LocationState;
@@ -71,7 +124,18 @@ const Runs = () => {
     if (state?.action === 'analyze_subreddits' && state?.websiteUrl) {
       // Handle subreddit analysis
       setIsAnalyzingSubreddits(true);
-      analyzeSubreddits(state.websiteUrl, state.campaignType);
+      
+      // Fetch campaign options for this website
+      fetchCampaignOptions(state.websiteUrl);
+      
+      // Set initial campaign type if provided
+      if (state.campaignType) {
+        setSelectedCampaignType(state.campaignType);
+        analyzeSubreddits(state.websiteUrl, state.campaignType);
+      } else {
+        // Will be updated once campaign options are fetched
+        analyzeSubreddits(state.websiteUrl);
+      }
     } else if (state?.messageContent) {
       // Handle regular content generation
       setOriginalMessage(state.messageContent);
@@ -82,6 +146,17 @@ const Runs = () => {
       handleGenerate(state.messageContent, detectedType);
     }
   }, [location.state]);
+  
+  // Handle campaign selection change
+  const handleCampaignChange = (campaignType: string) => {
+    const state = location.state as LocationState;
+    if (state?.websiteUrl) {
+      setSelectedCampaignType(campaignType);
+      setIsAnalyzingSubreddits(true);
+      setSubredditRecommendations(null);
+      analyzeSubreddits(state.websiteUrl, campaignType);
+    }
+  };
   
   const analyzeSubreddits = async (websiteUrl: string, campaignType?: string) => {
     try {
@@ -294,10 +369,12 @@ const Runs = () => {
         {location.state?.action === 'analyze_subreddits' ? (
           <SubredditRecommender 
             websiteUrl={location.state?.websiteUrl || ''}
-            campaignType={location.state?.campaignType}
+            campaignType={selectedCampaignType}
             isLoading={isAnalyzingSubreddits}
             error={subredditAnalysisError}
             results={subredditRecommendations}
+            availableCampaigns={campaignOptions}
+            onCampaignChange={handleCampaignChange}
           />
         ) : (
           <>
