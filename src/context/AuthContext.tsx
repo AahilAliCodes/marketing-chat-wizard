@@ -7,8 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  signUp: (email: string, password: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
 };
@@ -22,7 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_, session) => {
         setSession(session);
@@ -30,7 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Check for existing session
+    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -40,66 +39,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signInWithGoogle = async () => {
     try {
-      // Sign up without email verification
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
         options: {
-          emailRedirectTo: window.location.origin,
-          data: {
-            email
-          }
-        }
+          redirectTo: window.location.origin,
+        },
       });
       
       if (error) throw error;
-      
-      // Instead of automatic sign-in, use the session from the signUp response
-      if (data.session) {
-        toast({
-          title: "Account created",
-          description: "You have been signed in automatically"
-        });
-      } else {
-        // If no session is returned, use regular sign-in as fallback
-        await signIn(email, password);
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error creating account",
-        description: error.message
-      });
-      throw error;
-    }
-  };
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
       toast({
-        title: "Welcome back",
-        description: "You have successfully signed in"
+        title: "Google authentication",
+        description: "Redirecting to Google for authentication..."
       });
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error signing in",
+        title: "Authentication error",
         description: error.message
       });
-      throw error;
+      console.error("Google authentication error:", error);
     }
   };
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       toast({
         title: "Signed out",
-        description: "You have been signed out"
+        description: "You have been successfully signed out"
       });
     } catch (error: any) {
       toast({
@@ -107,14 +79,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         title: "Error signing out",
         description: error.message
       });
+      console.error("Sign out error:", error);
     }
   };
 
   const value = {
     session,
     user,
-    signUp,
-    signIn,
+    signInWithGoogle,
     signOut,
     loading
   };
