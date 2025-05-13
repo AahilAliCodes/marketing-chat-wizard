@@ -1,8 +1,7 @@
 
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useChatOperations } from '@/hooks/useChatOperations';
 import { ChannelType, MessageType } from '@/types/chat';
-import { useAuth } from './AuthContext';
 
 type ChatContextType = {
   activeChannel: string;
@@ -19,15 +18,9 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const chatOps = useChatOperations();
-  const { user } = useAuth();
-
-  // Load user channels when they log in
-  useEffect(() => {
-    if (user) {
-      chatOps.loadUserChannels();
-    }
-  }, [user]);
-
+  
+  // The useEffect for loading user channels is now handled in useChatOperations
+  
   return (
     <ChatContext.Provider value={chatOps}>
       {children}

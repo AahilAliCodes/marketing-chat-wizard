@@ -2,7 +2,7 @@
 export type MessageType = {
   id: string;
   content: string;
-  role: 'user' | 'assistant' | 'BLASTari';
+  role: 'user' | 'assistant';
   timestamp: Date;
   previousMessage?: string;
 };

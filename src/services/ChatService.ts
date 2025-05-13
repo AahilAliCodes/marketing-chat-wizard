@@ -118,28 +118,23 @@ export const getFullChannel = async (channelId: string): Promise<ChannelType> =>
   };
 };
 
-// Modified function to save a single message directly to the database
-// Now accepts website_url and campaign_type parameters
-export const saveMessage = async (channelId: string, message: MessageType, websiteUrl?: string, campaignType?: string) => {
+// Save a single message directly to the database without requiring a channel
+export const saveMessage = async (channelId: string, message: MessageType) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   
   if (userError || !userData.user) {
     throw new Error('User not authenticated');
   }
 
-  // Create the message object
-  const messageData = {
-    id: message.id,
-    channel_id: channelId,
-    content: message.content,
-    role: message.role,
-    created_at: message.timestamp.toISOString(),
-    user_id: userData.user.id
-  };
-
   const { error: messageError } = await supabase
     .from('chat_messages')
-    .insert(messageData);
+    .insert({
+      id: message.id,
+      channel_id: channelId,
+      content: message.content,
+      role: message.role,
+      created_at: message.timestamp.toISOString()
+    });
 
   if (messageError) {
     console.error('Error saving message:', messageError);
@@ -149,39 +144,32 @@ export const saveMessage = async (channelId: string, message: MessageType, websi
   return true;
 };
 
-// Function to get user messages by website and campaign
-export const getUserMessagesByWebsiteAndCampaign = async (websiteUrl: string, campaignType?: string) => {
+// New function to directly save a message for a logged-in user without a channel
+export const saveMessageDirectly = async (message: MessageType) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   
   if (userError || !userData.user) {
     throw new Error('User not authenticated');
   }
 
-  let query = supabase
+  const defaultChannelId = `default-${userData.user.id}`;
+
+  const { error: messageError } = await supabase
     .from('chat_messages')
-    .select('*')
-    .eq('website_url', websiteUrl)
-    .eq('user_id', userData.user.id);
-  
-  // Add campaign filter if provided
-  if (campaignType) {
-    query = query.eq('campaign_type', campaignType);
+    .insert({
+      id: message.id || uuidv4(),
+      channel_id: defaultChannelId,
+      content: message.content,
+      role: message.role,
+      created_at: message.timestamp.toISOString()
+    });
+
+  if (messageError) {
+    console.error('Error saving message directly:', messageError);
+    throw messageError;
   }
   
-  const { data: messages, error } = await query
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching messages:', error);
-    throw error;
-  }
-
-  return messages.map(msg => ({
-    id: msg.id,
-    content: msg.content,
-    role: msg.role as 'user' | 'assistant' | 'BLASTari',
-    timestamp: new Date(msg.created_at)
-  }));
+  return true;
 };
 
 // New function to create a channel and return its ID
@@ -211,36 +199,4 @@ export const createChannel = async (name: string, description: string) => {
   }
 
   return data.id;
-};
-
-// New function to save messages with website url and campaign type
-export const saveDirectMessage = async (message: MessageType, websiteUrl: string, campaignType?: string) => {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    throw new Error('User not authenticated');
-  }
-
-  // Create the message object with additional fields
-  const messageData = {
-    id: message.id,
-    channel_id: 'direct', // Using a placeholder value since we're not using channels
-    content: message.content,
-    role: message.role,
-    created_at: message.timestamp.toISOString(),
-    user_id: userData.user.id,
-    website_url: websiteUrl,
-    campaign_type: campaignType || 'general'
-  };
-
-  const { error: messageError } = await supabase
-    .from('chat_messages')
-    .insert(messageData);
-
-  if (messageError) {
-    console.error('Error saving direct message:', messageError);
-    throw messageError;
-  }
-  
-  return true;
 };
