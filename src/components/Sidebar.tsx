@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PieChart, LogOut, LogIn, LayoutDashboard } from 'lucide-react';
@@ -22,7 +23,7 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
   };
 
   return (
-    <div className="h-screen w-12 md:w-40 bg-marketing-purple flex flex-col overflow-hidden">
+    <div className="relative h-screen w-12 md:w-40 bg-marketing-purple flex flex-col overflow-hidden">
       <div className="p-2 border-b border-white/20 flex justify-center md:justify-start">
         <Link to="/" className="flex items-center space-x-2">
           <div className="flex items-center justify-center w-7 h-7 bg-white rounded-md">
@@ -87,14 +88,22 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
             </Button>
           </>
         ) : (
-          <Button
-            onClick={handleSignIn}
-            variant="ghost"
-            className="w-full justify-start text-gray-300 hover:bg-white/10 hover:text-white"
-          >
-            <LogIn className="h-5 w-5 md:mr-2" />
-            <span className="hidden md:inline">Sign In</span>
-          </Button>
+          <div className="flex items-center">
+            <Button
+              onClick={handleSignIn}
+              variant="ghost"
+              className="w-full justify-start text-gray-300 hover:bg-white/10 hover:text-white"
+            >
+              <LogIn className="h-5 w-5 md:mr-2" />
+              <span className="hidden md:inline">Sign In</span>
+            </Button>
+            <img 
+              src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
+              alt="Reddit Logo"
+              className="absolute left-full ml-3 w-10 h-10 rounded-full"
+              style={{ top: 'calc(100% - 52px)' }}
+            />
+          </div>
         )}
       </div>
     </div>
