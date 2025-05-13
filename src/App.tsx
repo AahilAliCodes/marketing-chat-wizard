@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Runs from "./pages/Runs";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import SharedChat from "./pages/SharedChat";
 import { AuthProvider } from "./context/AuthContext";
 import { ChatProvider } from "./context/ChatContext";
 
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/runs" element={<Runs />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/shared-chat/:chatId" element={<SharedChat />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
