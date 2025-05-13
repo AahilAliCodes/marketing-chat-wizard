@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -95,10 +96,14 @@ const Dashboard = () => {
     if (user && locationState?.pendingChatData) {
       const savePendingChatData = async () => {
         try {
+          // Create a new channel ID upfront
+          const newChannelId = uuidv4();
+          
           // Create a new channel for this conversation
-          const { data: channelData, error: channelError } = await supabase
+          const { data, error } = await supabase
             .from('user_chat_channels')
             .insert({
+              id: newChannelId,
               name: locationState.chatCampaignType || 'Marketing Chat',
               description: `Chat about ${locationState.chatWebsiteUrl}`,
               user_id: user.id
@@ -106,12 +111,12 @@ const Dashboard = () => {
             .select('id')
             .single();
 
-          if (channelError) {
-            console.error('Error creating channel:', channelError);
+          if (error) {
+            console.error('Error creating channel:', error);
             return;
           }
 
-          const channelId = channelData.id;
+          const channelId = data.id;
           
           // Save all messages in the pending chat data
           const messages = locationState.pendingChatData.map(msg => ({

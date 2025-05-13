@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
@@ -193,6 +194,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const { user } = useAuth();
   const { toast } = useToast();
   const [channelId, setChannelId] = useState<string | null>(null);
+  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
 
   const getCampaignIcon = () => {
     switch (campaignType) {
@@ -209,28 +211,33 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   useEffect(() => {
     // Generate welcome message based on campaign type
-    let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+    const initialWelcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
     
+    setWelcomeMessage(initialWelcomeMessage);
     
     setChatHistory([{
       id: 'welcome',
       role: 'BLASTari',
-      content: welcomeMessage,
+      content: initialWelcomeMessage,
       timestamp: new Date()
     }]);
     
     // If user is logged in, create a new channel or get existing channel
     if (user) {
-      createOrGetChannel();
+      createOrGetChannel(initialWelcomeMessage);
     }
   }, [websiteUrl, campaignType, user]);
 
-  const createOrGetChannel = async () => {
+  const createOrGetChannel = async (initialWelcomeMessage: string) => {
     try {
+      // Create a channel ID upfront
+      const newChannelId = uuidv4();
+      
       // Create a new channel for this conversation
       const { data, error } = await supabase
         .from('user_chat_channels')
         .insert({
+          id: newChannelId,
           name: campaignType || 'Marketing Chat',
           description: `Chat about ${websiteUrl}`,
           user_id: user!.id
@@ -246,7 +253,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       setChannelId(data.id);
       
       // Save welcome message
-      await saveMessageToSupabase('welcome', 'assistant', welcomeMessage);
+      await saveMessageToSupabase('welcome', 'assistant', initialWelcomeMessage);
     } catch (error) {
       console.error('Error in createOrGetChannel:', error);
     }
@@ -332,7 +339,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       // User is already logged in, save the chat
       if (!channelId) {
         // Create a channel if it doesn't exist yet
-        await createOrGetChannel();
+        await createOrGetChannel(welcomeMessage);
       }
       
       // Save any unsaved messages
