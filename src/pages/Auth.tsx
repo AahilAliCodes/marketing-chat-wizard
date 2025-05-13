@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
@@ -14,6 +14,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 const Auth = () => {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,12 +38,47 @@ const Auth = () => {
           title: "Authentication successful",
           description: "You have been successfully signed in"
         });
+
+        // Check if there's pending chat data to save
+        handleRedirectAfterAuth();
       }
     };
 
     // Only run on mount when it might be an OAuth redirect
     handleOAuthCallback();
-  }, [toast]);
+  }, [toast, navigate]);
+
+  // Check if user is authenticated and handle redirection
+  useEffect(() => {
+    if (user) {
+      handleRedirectAfterAuth();
+    }
+  }, [user]);
+
+  const handleRedirectAfterAuth = () => {
+    const redirectUrl = sessionStorage.getItem('chatRedirectUrl');
+    const pendingChatHistory = sessionStorage.getItem('pendingChatHistory');
+    
+    if (redirectUrl) {
+      // Clear session storage items after reading them
+      sessionStorage.removeItem('chatRedirectUrl');
+      sessionStorage.removeItem('pendingChatHistory');
+      sessionStorage.removeItem('chatWebsiteUrl');
+      sessionStorage.removeItem('chatCampaignType');
+      
+      // Navigate back to the dashboard or the specific redirect URL
+      navigate(redirectUrl, { 
+        state: { 
+          pendingChatData: pendingChatHistory ? JSON.parse(pendingChatHistory) : null,
+          chatWebsiteUrl: sessionStorage.getItem('chatWebsiteUrl'),
+          chatCampaignType: sessionStorage.getItem('chatCampaignType')
+        } 
+      });
+    } else {
+      // Default navigate to dashboard if no specific redirect URL
+      navigate('/dashboard');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,10 +111,6 @@ const Auth = () => {
         <Loader2 className="h-8 w-8 animate-spin text-marketing-purple" />
       </div>
     );
-  }
-
-  if (user) {
-    return <Navigate to="/" replace />;
   }
 
   return (

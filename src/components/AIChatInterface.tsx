@@ -7,6 +7,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -186,6 +190,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [channelId, setChannelId] = useState<string | null>(null);
 
   const getCampaignIcon = () => {
     switch (campaignType) {
@@ -211,35 +218,103 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       content: welcomeMessage,
       timestamp: new Date()
     }]);
-  }, [websiteUrl, campaignType]);
+    
+    // If user is logged in, create a new channel or get existing channel
+    if (user) {
+      createOrGetChannel();
+    }
+  }, [websiteUrl, campaignType, user]);
+
+  const createOrGetChannel = async () => {
+    try {
+      // Create a new channel for this conversation
+      const { data, error } = await supabase
+        .from('user_chat_channels')
+        .insert({
+          name: campaignType || 'Marketing Chat',
+          description: `Chat about ${websiteUrl}`,
+          user_id: user!.id
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error creating channel:', error);
+        return;
+      }
+
+      setChannelId(data.id);
+      
+      // Save welcome message
+      await saveMessageToSupabase('welcome', 'assistant', welcomeMessage);
+    } catch (error) {
+      console.error('Error in createOrGetChannel:', error);
+    }
+  };
+
+  const saveMessageToSupabase = async (messageId: string, role: string, content: string) => {
+    if (!user || !channelId) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          id: messageId,
+          channel_id: channelId,
+          role: role,
+          content: content
+        });
+
+      if (error) {
+        console.error('Error saving message:', error);
+      }
+    } catch (error) {
+      console.error('Error in saveMessageToSupabase:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userMessage.trim() || isLoading) return;
 
+    // Generate unique ID for this message
+    const userMessageId = `user-${uuidv4()}`;
+
     // Add user message to chat
     const newUserMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: userMessageId,
       role: 'user',
       content: userMessage,
       timestamp: new Date()
     };
     
     setChatHistory(prev => [...prev, newUserMessage]);
+    
+    // Save user message to Supabase if user is logged in
+    if (user && channelId) {
+      await saveMessageToSupabase(userMessageId, 'user', userMessage);
+    }
+    
     setUserMessage('');
 
     // Get AI response
     const response = await sendMessageToAI(websiteUrl, userMessage, campaignType);
     
     if (response) {
+      const aiMessageId = `ai-${uuidv4()}`;
       const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: aiMessageId,
         role: 'assistant',
         content: response.response,
         timestamp: new Date()
       };
       
       setChatHistory(prev => [...prev, aiMessage]);
+      
+      // Save AI response to Supabase if user is logged in
+      if (user && channelId) {
+        await saveMessageToSupabase(aiMessageId, 'assistant', response.response);
+      }
     }
   };
 
@@ -250,6 +325,36 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   const handlePromptSelect = (prompt: string) => {
     setUserMessage(prompt);
+  };
+
+  const handleSaveChat = async () => {
+    if (user) {
+      // User is already logged in, save the chat
+      if (!channelId) {
+        // Create a channel if it doesn't exist yet
+        await createOrGetChannel();
+      }
+      
+      // Save any unsaved messages
+      for (const msg of chatHistory) {
+        await saveMessageToSupabase(msg.id, msg.role === 'BLASTari' ? 'assistant' : msg.role, msg.content);
+      }
+      
+      toast({
+        title: "Chat saved",
+        description: "Your conversation has been saved to your account"
+      });
+    } else {
+      // User is not logged in, store chat in session storage and redirect to auth
+      sessionStorage.setItem('pendingChatHistory', JSON.stringify(chatHistory));
+      sessionStorage.setItem('chatRedirectUrl', window.location.pathname);
+      sessionStorage.setItem('chatWebsiteUrl', websiteUrl);
+      if (campaignType) {
+        sessionStorage.setItem('chatCampaignType', campaignType);
+      }
+      
+      navigate('/auth');
+    }
   };
 
   return (
@@ -368,12 +473,10 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
               variant="outline"
               size="sm"
               className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
-              onClick={() => {
-                navigate('/auth');
-              }}
+              onClick={handleSaveChat}
             >
               <Save className="h-4 w-4 mr-2" />
-              Sign in to save
+              {user ? "Save chat" : "Sign in to save"}
             </Button>
             <Button
               variant="outline"
