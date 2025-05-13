@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const Auth = () => {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, loading } = useAuth();
@@ -45,6 +46,16 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Please enter both email and password"
+      });
+      return;
+    }
+    
     setFormLoading(true);
     
     try {
@@ -74,8 +85,12 @@ const Auth = () => {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 shadow-lg rounded-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-marketing-purple">AI Marketing Assistant</h1>
-          <p className="mt-2 text-gray-600">Sign in to save your chats</p>
+          <Avatar className="h-12 w-12 mx-auto mb-2">
+            <AvatarImage src="/placeholder.svg" alt="BLASTari logo" />
+            <AvatarFallback className="bg-marketing-purple text-white">B</AvatarFallback>
+          </Avatar>
+          <h1 className="text-3xl font-bold text-marketing-purple">BLASTari</h1>
+          <p className="mt-2 text-gray-600">{isLogin ? "Sign in to continue" : "Create your account"}</p>
         </div>
 
         <div className="space-y-6">
@@ -90,6 +105,8 @@ const Auth = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com"
                 required
+                autoComplete={isLogin ? "username" : "email"}
+                className="focus:border-marketing-purple focus:ring-marketing-purple"
               />
             </div>
             <div className="space-y-2">
@@ -101,6 +118,8 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                className="focus:border-marketing-purple focus:ring-marketing-purple"
               />
             </div>
             <Button 
@@ -119,6 +138,7 @@ const Auth = () => {
             <button
               onClick={() => setIsLogin(!isLogin)} 
               className="text-sm text-marketing-purple hover:underline"
+              type="button"
             >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
@@ -136,6 +156,7 @@ const Auth = () => {
           <Button
             onClick={signInWithGoogle}
             className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+            type="button"
           >
             <FcGoogle className="h-5 w-5" />
             Sign in with Google

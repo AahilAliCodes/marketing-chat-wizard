@@ -58,13 +58,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         title: "Sign up successful",
         description: "Please check your email for verification instructions."
       });
+      
+      // Add this message specifically for development without email verification
+      console.info("Note: For development, you might need to disable email confirmation in the Supabase dashboard.");
+      
     } catch (error: any) {
+      console.error("Sign up error:", error);
       toast({
         variant: "destructive",
         title: "Sign up error",
-        description: error.message
+        description: error.message || "Failed to sign up. Please try again."
       });
-      console.error("Sign up error:", error);
+      throw error; // Re-throw to allow the UI to handle it
     } finally {
       setLoading(false);
     }
@@ -85,12 +90,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You have been successfully signed in"
       });
     } catch (error: any) {
+      console.error("Sign in error:", error);
       toast({
         variant: "destructive",
         title: "Sign in error",
-        description: error.message
+        description: error.message || "Failed to sign in. Please check your credentials."
       });
-      console.error("Sign in error:", error);
+      throw error; // Re-throw to allow the UI to handle it
     } finally {
       setLoading(false);
     }
@@ -112,12 +118,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "Redirecting to Google for authentication..."
       });
     } catch (error: any) {
+      console.error("Google authentication error:", error);
       toast({
         variant: "destructive",
         title: "Authentication error",
-        description: error.message
+        description: error.message || "Failed to start Google authentication."
       });
-      console.error("Google authentication error:", error);
     }
   };
 
@@ -131,12 +137,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You have been successfully signed out"
       });
     } catch (error: any) {
+      console.error("Sign out error:", error);
       toast({
         variant: "destructive",
         title: "Error signing out",
-        description: error.message
+        description: error.message || "Failed to sign out. Please try again."
       });
-      console.error("Sign out error:", error);
     }
   };
 
