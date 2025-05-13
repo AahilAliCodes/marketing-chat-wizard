@@ -225,7 +225,14 @@ const Dashboard = () => {
                 </Button>
               )}
             </div>
-            <p className="text-gray-600 mt-2 md:mt-0">Website: {websiteUrl}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-gray-600 mt-2 md:mt-0">Website: {websiteUrl}</p>
+              <img 
+                src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
+                alt="Reddit Logo"
+                className="w-8 h-8 rounded-full"
+              />
+            </div>
           </div>
           
           {!activeCampaign ? (
@@ -287,18 +294,6 @@ const Dashboard = () => {
               )}
             </div>
           )}
-          
-          {/* Reddit-like social icon at the bottom */}
-          <div className="absolute bottom-4 right-4">
-            <a 
-              href="https://www.reddit.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#ea384c] hover:bg-[#ff5414] transition-colors shadow-md"
-            >
-              <Share2 size={20} color="white" />
-            </a>
-          </div>
         </div>
       ) : (
         null
