@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -11,14 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
 interface LocationState {
   isAnalyzing?: boolean;
   websiteUrl?: string;
-  pendingChatData?: any[];
-  chatWebsiteUrl?: string;
-  chatCampaignType?: string;
 }
 
 interface CampaignOption {
@@ -88,73 +83,6 @@ const Dashboard = () => {
       });
     }
   };
-
-  // Handle pending chat data after authentication
-  useEffect(() => {
-    const locationState = location.state as LocationState;
-    
-    if (user && locationState?.pendingChatData) {
-      const savePendingChatData = async () => {
-        try {
-          // Create a new channel ID upfront
-          const newChannelId = uuidv4();
-          
-          // Create a new channel for this conversation
-          const { data, error } = await supabase
-            .from('user_chat_channels')
-            .insert({
-              id: newChannelId,
-              name: locationState.chatCampaignType || 'Marketing Chat',
-              description: `Chat about ${locationState.chatWebsiteUrl}`,
-              user_id: user.id
-            })
-            .select('id')
-            .single();
-
-          if (error) {
-            console.error('Error creating channel:', error);
-            return;
-          }
-
-          const channelId = data.id;
-          
-          // Save all messages in the pending chat data
-          const messages = locationState.pendingChatData.map(msg => ({
-            id: msg.id || `msg-${uuidv4()}`,
-            channel_id: channelId,
-            role: msg.role === 'BLASTari' ? 'assistant' : msg.role,
-            content: msg.content,
-            created_at: new Date(msg.timestamp).toISOString()
-          }));
-
-          if (messages.length > 0) {
-            const { error: messagesError } = await supabase
-              .from('chat_messages')
-              .insert(messages);
-
-            if (messagesError) {
-              console.error('Error saving messages:', messagesError);
-              return;
-            }
-          }
-
-          toast({
-            title: "Chat saved",
-            description: "Your conversation has been saved to your account"
-          });
-        } catch (error) {
-          console.error('Error saving pending chat data:', error);
-          toast({
-            variant: "destructive",
-            title: "Error saving chat",
-            description: "There was a problem saving your conversation"
-          });
-        }
-      };
-
-      savePendingChatData();
-    }
-  }, [user, location.state, toast]);
 
   // Get state from location if available
   const state = location.state as LocationState;

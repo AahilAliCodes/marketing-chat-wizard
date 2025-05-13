@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { ChannelType, MessageType } from "@/types/chat";
-import { v4 as uuidv4 } from 'uuid';
 
 export const saveChatChannel = async (channel: ChannelType) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -116,87 +115,4 @@ export const getFullChannel = async (channelId: string): Promise<ChannelType> =>
     description: channel.description || '',
     messages: messages
   };
-};
-
-// Save a single message directly to the database without requiring a channel
-export const saveMessage = async (channelId: string, message: MessageType) => {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    throw new Error('User not authenticated');
-  }
-
-  const { error: messageError } = await supabase
-    .from('chat_messages')
-    .insert({
-      id: message.id,
-      channel_id: channelId,
-      content: message.content,
-      role: message.role,
-      created_at: message.timestamp.toISOString()
-    });
-
-  if (messageError) {
-    console.error('Error saving message:', messageError);
-    throw messageError;
-  }
-  
-  return true;
-};
-
-// New function to directly save a message for a logged-in user without a channel
-export const saveMessageDirectly = async (message: MessageType) => {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    throw new Error('User not authenticated');
-  }
-
-  const defaultChannelId = `default-${userData.user.id}`;
-
-  const { error: messageError } = await supabase
-    .from('chat_messages')
-    .insert({
-      id: message.id || uuidv4(),
-      channel_id: defaultChannelId,
-      content: message.content,
-      role: message.role,
-      created_at: message.timestamp.toISOString()
-    });
-
-  if (messageError) {
-    console.error('Error saving message directly:', messageError);
-    throw messageError;
-  }
-  
-  return true;
-};
-
-// New function to create a channel and return its ID
-export const createChannel = async (name: string, description: string) => {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !userData.user) {
-    throw new Error('User not authenticated');
-  }
-
-  const channelId = uuidv4();
-  
-  const { data, error } = await supabase
-    .from('user_chat_channels')
-    .insert({
-      id: channelId,
-      name,
-      description,
-      user_id: userData.user.id
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    console.error('Error creating channel:', error);
-    throw error;
-  }
-
-  return data.id;
 };
