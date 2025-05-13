@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, ExternalLink, Github, Twitter, Reddit } from 'lucide-react';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -210,7 +210,7 @@ const Dashboard = () => {
       <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
       
       {activeItem === 'home' ? (
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden relative">
           <div className="p-6 border-b flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4 mb-2 md:mb-0">
               <h1 className="text-3xl font-bold">Campaign Recommendations</h1>
@@ -287,6 +287,18 @@ const Dashboard = () => {
               )}
             </div>
           )}
+          
+          {/* Reddit icon at the bottom */}
+          <div className="absolute bottom-4 right-4">
+            <a 
+              href="https://www.reddit.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#ea384c] hover:bg-[#ff5414] transition-colors shadow-md"
+            >
+              <Reddit size={20} color="white" />
+            </a>
+          </div>
         </div>
       ) : (
         null

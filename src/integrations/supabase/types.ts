@@ -50,25 +50,34 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          campaign_type: string | null
           channel_id: string
           content: string
           created_at: string
           id: string
           role: string
+          user_id: string | null
+          website_url: string | null
         }
         Insert: {
+          campaign_type?: string | null
           channel_id: string
           content: string
           created_at?: string
           id?: string
           role: string
+          user_id?: string | null
+          website_url?: string | null
         }
         Update: {
+          campaign_type?: string | null
           channel_id?: string
           content?: string
           created_at?: string
           id?: string
           role?: string
+          user_id?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -82,22 +91,22 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
           created_at: string
+          email: string | null
           id: string
           updated_at: string
           username: string | null
         }
         Insert: {
-          avatar_url?: string | null
           created_at?: string
+          email?: string | null
           id: string
           updated_at?: string
           username?: string | null
         }
         Update: {
-          avatar_url?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           updated_at?: string
           username?: string | null
@@ -116,7 +125,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
-          id?: string
+          id: string
           name: string
           updated_at?: string
           user_id: string
