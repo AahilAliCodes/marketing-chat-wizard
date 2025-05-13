@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
@@ -12,6 +11,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import ChatInput from './ChatInput'; // Fixed import
+import ChatMessage from './ChatMessage'; // Fixed import
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -224,52 +225,58 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     
     // If user is logged in, create a new channel or get existing channel
     if (user) {
-      createOrGetChannel(initialWelcomeMessage);
+      // Try to load previous messages for this website/campaign combination
+      loadPreviousMessages();
     }
   }, [websiteUrl, campaignType, user]);
 
-  const createOrGetChannel = async (initialWelcomeMessage: string) => {
+  // New function to load previous messages for this website/campaign
+  const loadPreviousMessages = async () => {
+    if (!user) return;
+    
     try {
-      // Create a channel ID upfront
-      const newChannelId = uuidv4();
+      // First, check if we have messages for this website/campaign combination
+      const { data: messages, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('website_url', websiteUrl)
+        .eq('campaign_type', campaignType || 'general')
+        .order('created_at', { ascending: true });
       
-      // Create a new channel for this conversation
-      const { data, error } = await supabase
-        .from('user_chat_channels')
-        .insert({
-          id: newChannelId,
-          name: campaignType || 'Marketing Chat',
-          description: `Chat about ${websiteUrl}`,
-          user_id: user!.id
-        })
-        .select('id')
-        .single();
-
       if (error) {
-        console.error('Error creating channel:', error);
+        console.error('Error fetching previous messages:', error);
         return;
       }
-
-      setChannelId(data.id);
       
-      // Save welcome message
-      await saveMessageToSupabase('welcome', 'assistant', initialWelcomeMessage);
-    } catch (error) {
-      console.error('Error in createOrGetChannel:', error);
+      if (messages && messages.length > 0) {
+        // Convert the messages to our format
+        const formattedMessages = messages.map(msg => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant' | 'BLASTari',
+          content: msg.content,
+          timestamp: new Date(msg.created_at)
+        }));
+        
+        setChatHistory(formattedMessages);
+      }
+    } catch (err) {
+      console.error('Error in loadPreviousMessages:', err);
     }
   };
 
   const saveMessageToSupabase = async (messageId: string, role: string, content: string) => {
-    if (!user || !channelId) return;
+    if (!user) return;
 
     try {
       const { error } = await supabase
         .from('chat_messages')
         .insert({
           id: messageId,
-          channel_id: channelId,
           role: role,
-          content: content
+          content: content,
+          website_url: websiteUrl,
+          campaign_type: campaignType || 'general',
+          user_id: user.id
         });
 
       if (error) {
@@ -298,7 +305,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     setChatHistory(prev => [...prev, newUserMessage]);
     
     // Save user message to Supabase if user is logged in
-    if (user && channelId) {
+    if (user) {
       await saveMessageToSupabase(userMessageId, 'user', userMessage);
     }
     
@@ -319,7 +326,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       setChatHistory(prev => [...prev, aiMessage]);
       
       // Save AI response to Supabase if user is logged in
-      if (user && channelId) {
+      if (user) {
         await saveMessageToSupabase(aiMessageId, 'assistant', response.response);
       }
     }
@@ -332,36 +339,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   const handlePromptSelect = (prompt: string) => {
     setUserMessage(prompt);
-  };
-
-  const handleSaveChat = async () => {
-    if (user) {
-      // User is already logged in, save the chat
-      if (!channelId) {
-        // Create a channel if it doesn't exist yet
-        await createOrGetChannel(welcomeMessage);
-      }
-      
-      // Save any unsaved messages
-      for (const msg of chatHistory) {
-        await saveMessageToSupabase(msg.id, msg.role === 'BLASTari' ? 'assistant' : msg.role, msg.content);
-      }
-      
-      toast({
-        title: "Chat saved",
-        description: "Your conversation has been saved to your account"
-      });
-    } else {
-      // User is not logged in, store chat in session storage and redirect to auth
-      sessionStorage.setItem('pendingChatHistory', JSON.stringify(chatHistory));
-      sessionStorage.setItem('chatRedirectUrl', window.location.pathname);
-      sessionStorage.setItem('chatWebsiteUrl', websiteUrl);
-      if (campaignType) {
-        sessionStorage.setItem('chatCampaignType', campaignType);
-      }
-      
-      navigate('/auth');
-    }
   };
 
   return (
@@ -473,29 +450,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
               ) : (
                 <SendHorizontal className="h-5 w-5 text-white" />
               )}
-            </Button>
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
-              onClick={handleSaveChat}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {user ? "Save chat" : "Sign in to save"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
-              onClick={() => {
-                // TODO: Implement share functionality
-                console.log('Share clicked');
-              }}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share chat
             </Button>
           </div>
         </div>

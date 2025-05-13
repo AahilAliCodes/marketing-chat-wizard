@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ChannelType, MessageType } from "@/types/chat";
 import { v4 as uuidv4 } from 'uuid';
@@ -117,23 +118,37 @@ export const getFullChannel = async (channelId: string): Promise<ChannelType> =>
   };
 };
 
-// New function to save a single message directly to the database
-export const saveMessage = async (channelId: string, message: MessageType) => {
+// Modified function to save a single message directly to the database
+// Now accepts website_url and campaign_type parameters
+export const saveMessage = async (channelId: string, message: MessageType, websiteUrl?: string, campaignType?: string) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   
   if (userError || !userData.user) {
     throw new Error('User not authenticated');
   }
 
+  // Create the message object with additional fields if provided
+  const messageObject: any = {
+    id: message.id,
+    channel_id: channelId,
+    content: message.content,
+    role: message.role,
+    created_at: message.timestamp.toISOString(),
+    user_id: userData.user.id
+  };
+  
+  // Add optional fields if provided
+  if (websiteUrl) {
+    messageObject.website_url = websiteUrl;
+  }
+  
+  if (campaignType) {
+    messageObject.campaign_type = campaignType;
+  }
+
   const { error: messageError } = await supabase
     .from('chat_messages')
-    .insert({
-      id: message.id,
-      channel_id: channelId,
-      content: message.content,
-      role: message.role,
-      created_at: message.timestamp.toISOString()
-    });
+    .insert(messageObject);
 
   if (messageError) {
     console.error('Error saving message:', messageError);
@@ -141,6 +156,41 @@ export const saveMessage = async (channelId: string, message: MessageType) => {
   }
   
   return true;
+};
+
+// Function to get user messages by website and campaign
+export const getUserMessagesByWebsiteAndCampaign = async (websiteUrl: string, campaignType?: string) => {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !userData.user) {
+    throw new Error('User not authenticated');
+  }
+
+  const query = supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('website_url', websiteUrl)
+    .eq('user_id', userData.user.id);
+  
+  // Add campaign filter if provided
+  if (campaignType) {
+    query.eq('campaign_type', campaignType);
+  }
+  
+  const { data: messages, error } = await query
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching messages:', error);
+    throw error;
+  }
+
+  return messages.map(msg => ({
+    id: msg.id,
+    content: msg.content,
+    role: msg.role as 'user' | 'assistant' | 'BLASTari',
+    timestamp: new Date(msg.created_at)
+  }));
 };
 
 // New function to create a channel and return its ID

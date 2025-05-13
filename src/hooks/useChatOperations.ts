@@ -81,7 +81,7 @@ export const useChatOperations = () => {
       })
     );
 
-    // If the user is logged in and the channel isn't a default one, save the message
+    // If the user is logged in, save the message to the database
     if (user && !channelId.startsWith('channel-')) {
       try {
         await saveMessage(channelId, newMessage);
@@ -90,7 +90,51 @@ export const useChatOperations = () => {
         console.error('Error saving message:', error);
       }
     }
-  }, [user]);
+    
+    // For any non-default channel, try to save the message
+    if (user) {
+      try {
+        // For default channels, we'll need to create a new channel first
+        let finalChannelId = channelId;
+        
+        if (channelId.startsWith('channel-')) {
+          // Find the channel info
+          const channel = channels.find(ch => ch.id === channelId);
+          if (channel) {
+            // Create a new channel with the same name
+            finalChannelId = await createChannel(channel.name, channel.description || '');
+            
+            // Update the active channel to the new one
+            setActiveChannel(finalChannelId);
+            
+            // Get all previous messages from this channel
+            const previousMessages = channel.messages;
+            
+            // Save all previous messages to the new channel
+            for (const msg of previousMessages) {
+              await saveMessage(finalChannelId, msg);
+            }
+            
+            // Update the channels list
+            const updatedChannel = {
+              ...channel,
+              id: finalChannelId,
+            };
+            
+            setChannels(prev => [
+              updatedChannel,
+              ...prev.filter(ch => ch.id !== channelId)
+            ]);
+          }
+        }
+        
+        // Now save the current message to the appropriate channel
+        await saveMessage(finalChannelId, newMessage);
+      } catch (error) {
+        console.error('Error saving message:', error);
+      }
+    }
+  }, [user, channels]);
 
   const saveCurrentChannel = async () => {
     if (!user) {
