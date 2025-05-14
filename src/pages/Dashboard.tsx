@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft, ExternalLink, Github, Twitter, Share2 } from 'lucide-react';
+import OnboardingTour from '@/components/OnboardingTour';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -89,6 +91,9 @@ const Dashboard = () => {
   const state = location.state as LocationState;
 
   useEffect(() => {
+    // Check if onboarding has been completed before
+    const onboardingComplete = localStorage.getItem('dashboardOnboardingComplete') === 'true';
+    
     if (state?.isAnalyzing && state?.websiteUrl) {
       setIsAnalyzing(true);
       setWebsiteUrl(state.websiteUrl);
@@ -157,6 +162,10 @@ const Dashboard = () => {
           setTimeout(() => {
             setIsAnalyzing(false);
             setIsLoading(false);
+            // Show onboarding only after loading is complete
+            if (!onboardingComplete) {
+              setShowOnboarding(true);
+            }
           }, remainingTime);
         }
       };
@@ -183,6 +192,10 @@ const Dashboard = () => {
           // Simulate loading time if not analyzing
           const timer = setTimeout(() => {
             setIsLoading(false);
+            // Show onboarding only after loading is complete
+            if (!onboardingComplete) {
+              setShowOnboarding(true);
+            }
           }, 1000);
           
           return () => clearTimeout(timer);
@@ -243,7 +256,7 @@ const Dashboard = () => {
           </div>
           
           {!activeCampaign ? (
-            <div className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
+            <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
               {campaignOptions.map((campaign) => (
                 <div
                   key={campaign.id}
@@ -304,7 +317,7 @@ const Dashboard = () => {
           
           {/* Reddit logo at the bottom left - only show when no campaign is active */}
           {!activeCampaign && (
-            <div className="absolute bottom-4 left-4 z-10">
+            <div id="reddit-icon" className="absolute bottom-4 left-4 z-10">
               <button 
                 onClick={handleRedditClick}
                 className="flex items-center justify-center w-10 h-10 transition-all hover:scale-110"
@@ -316,6 +329,11 @@ const Dashboard = () => {
                 />
               </button>
             </div>
+          )}
+
+          {/* Onboarding overlay */}
+          {showOnboarding && (
+            <OnboardingTour onComplete={() => setShowOnboarding(false)} />
           )}
         </div>
       ) : (
