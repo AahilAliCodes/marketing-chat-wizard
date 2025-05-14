@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft, Reddit } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, MessageCircle } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 
 interface LocationState {
@@ -340,7 +340,7 @@ const Dashboard = () => {
                 className="flex items-center justify-center w-10 h-10 bg-orange-500 rounded-full shadow-md transition-all hover:scale-110"
                 title="Generate Reddit Posts"
               >
-                <Reddit className="w-6 h-6 text-white" />
+                <MessageCircle className="w-6 h-6 text-white" />
               </button>
             </div>
           )}
