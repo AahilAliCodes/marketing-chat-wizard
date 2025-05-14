@@ -137,6 +137,9 @@ const Dashboard = () => {
 
             // Fetch the newly generated recommendations
             await fetchCampaignRecommendations(state.websiteUrl);
+            
+            // Show onboarding for new website analysis
+            setShowOnboarding(true);
           }
           
         } catch (error: any) {
@@ -162,10 +165,6 @@ const Dashboard = () => {
           setTimeout(() => {
             setIsAnalyzing(false);
             setIsLoading(false);
-            // Show onboarding only after loading is complete
-            if (!onboardingComplete) {
-              setShowOnboarding(true);
-            }
           }, remainingTime);
         }
       };
@@ -192,10 +191,6 @@ const Dashboard = () => {
           // Simulate loading time if not analyzing
           const timer = setTimeout(() => {
             setIsLoading(false);
-            // Show onboarding only after loading is complete
-            if (!onboardingComplete) {
-              setShowOnboarding(true);
-            }
           }, 1000);
           
           return () => clearTimeout(timer);
@@ -347,7 +342,10 @@ const Dashboard = () => {
 
           {/* Onboarding overlay */}
           {showOnboarding && (
-            <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+            <OnboardingTour 
+              onComplete={() => setShowOnboarding(false)} 
+              websiteUrl={websiteUrl}
+            />
           )}
         </div>
       ) : (

@@ -11,9 +11,10 @@ interface OnboardingStep {
 
 interface OnboardingTourProps {
   onComplete: () => void;
+  websiteUrl: string;
 }
 
-const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete }) => {
+const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, websiteUrl }) => {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const { toast } = useToast();
@@ -30,6 +31,16 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete }) => {
       position: 'left'
     }
   ];
+
+  useEffect(() => {
+    // Check if this particular website has been onboarded before
+    const analyzedWebsites = JSON.parse(localStorage.getItem('analyzedWebsites') || '[]');
+    if (websiteUrl && analyzedWebsites.includes(websiteUrl)) {
+      // Website already onboarded, skip tour
+      setIsVisible(false);
+      onComplete();
+    }
+  }, [websiteUrl, onComplete]);
 
   // Position the tooltip based on the target element
   useEffect(() => {
@@ -97,8 +108,16 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete }) => {
 
   const handleComplete = () => {
     setIsVisible(false);
-    // Store in localStorage that onboarding has been completed
-    localStorage.setItem('dashboardOnboardingComplete', 'true');
+    
+    // Add this website to the list of analyzed websites
+    if (websiteUrl) {
+      const analyzedWebsites = JSON.parse(localStorage.getItem('analyzedWebsites') || '[]');
+      if (!analyzedWebsites.includes(websiteUrl)) {
+        analyzedWebsites.push(websiteUrl);
+        localStorage.setItem('analyzedWebsites', JSON.stringify(analyzedWebsites));
+      }
+    }
+    
     onComplete();
   };
 
