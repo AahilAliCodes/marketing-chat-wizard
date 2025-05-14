@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface OnboardingStep {
   target: string;
@@ -54,39 +53,64 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, websiteUrl 
 
       const targetRect = targetElement.getBoundingClientRect();
       const position = steps[currentStep].position;
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate tooltip dimensions
+      const tooltipWidth = tooltipElement.offsetWidth;
+      const tooltipHeight = tooltipElement.offsetHeight;
 
       // Add highlight effect to target
       targetElement.classList.add('ring-4', 'ring-marketing-purple', 'ring-opacity-70', 'z-30');
 
-      // Position tooltip based on specified position
+      // Initial position calculation based on specified position
+      let top = 0;
+      let left = 0;
+      
       switch (position) {
         case 'top':
-          tooltipElement.style.top = `${targetRect.top - tooltipElement.offsetHeight - 12}px`;
-          tooltipElement.style.left = `${targetRect.left + (targetRect.width / 2) - (tooltipElement.offsetWidth / 2)}px`;
+          top = targetRect.top - tooltipHeight - 12;
+          left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2);
           break;
         case 'right':
-          tooltipElement.style.top = `${targetRect.top + (targetRect.height / 2) - (tooltipElement.offsetHeight / 2)}px`;
-          tooltipElement.style.left = `${targetRect.right + 12}px`;
+          top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2);
+          left = targetRect.right + 12;
           break;
         case 'bottom':
-          tooltipElement.style.top = `${targetRect.bottom + 12}px`;
-          tooltipElement.style.left = `${targetRect.left + (targetRect.width / 2) - (tooltipElement.offsetWidth / 2)}px`;
+          top = targetRect.bottom + 12;
+          left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2);
           break;
         case 'left':
-          tooltipElement.style.top = `${targetRect.top + (targetRect.height / 2) - (tooltipElement.offsetHeight / 2)}px`;
-          tooltipElement.style.left = `${targetRect.left - tooltipElement.offsetWidth - 12}px`;
+          top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2);
+          left = targetRect.left - tooltipWidth - 12;
           break;
       }
+      
+      // Adjust position to keep tooltip on screen
+      if (left < 10) left = 10;
+      if (left + tooltipWidth > viewportWidth - 10) left = viewportWidth - tooltipWidth - 10;
+      if (top < 10) top = 10;
+      if (top + tooltipHeight > viewportHeight - 10) top = viewportHeight - tooltipHeight - 10;
+      
+      // Apply the calculated position
+      tooltipElement.style.top = `${top}px`;
+      tooltipElement.style.left = `${left}px`;
     };
 
     // Wait for elements to be fully rendered
     setTimeout(positionTooltip, 100);
+    
+    // Also reposition on window resize
+    window.addEventListener('resize', positionTooltip);
 
     return () => {
       // Remove highlight effect from all elements when changing steps
       document.querySelectorAll('.ring-4').forEach(el => {
         el.classList.remove('ring-4', 'ring-marketing-purple', 'ring-opacity-70', 'z-30');
       });
+      window.removeEventListener('resize', positionTooltip);
     };
   }, [currentStep, isVisible, steps]);
 
