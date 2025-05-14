@@ -11,7 +11,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || "";
 // @ts-ignore
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY') || "";
 // @ts-ignore
-const geminiApiKey = Deno.env.get('GEMINI_API_KEY') || "AIzaSyDsIv4623a2UjLr5O1dNZh86XsUk498HSE";
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY') || "";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +88,14 @@ serve(async (req) => {
     let aiResponse;
     
     if (apiProvider === 'gemini') {
+      // Check if we have the Gemini API key
+      if (!geminiApiKey || geminiApiKey.trim() === "") {
+        return new Response(
+          JSON.stringify({ error: "Gemini API key is not configured" }), 
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       // Call Gemini API
       const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
         method: 'POST',
