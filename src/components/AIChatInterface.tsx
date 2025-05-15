@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +8,9 @@ import ChatMessage from './chat/ChatMessage';
 import ChatInputForm from './chat/ChatInputForm';
 import ShareChat from './chat/ShareChat';
 import AnimatedRocket from './chat/AnimatedRocket';
+import { loadChatHistory } from '@/services/ChatHistoryService';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -20,6 +22,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     // Generate welcome message based on campaign type
@@ -32,6 +37,67 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
       timestamp: new Date()
     }]);
   }, [websiteUrl, campaignType]);
+
+  // Load chat history for authenticated users
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (user && websiteUrl) {
+        setIsLoadingHistory(true);
+        try {
+          const history = await loadChatHistory(websiteUrl);
+          
+          if (history.length > 0) {
+            // Convert history items to chat messages
+            const historyMessages: ChatMessageType[] = [];
+            
+            // Keep the welcome message at the top
+            historyMessages.push({
+              id: 'welcome',
+              role: 'BLASTari',
+              content: `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`,
+              timestamp: new Date()
+            });
+            
+            // Add past conversations
+            history.forEach((item, index) => {
+              // Add user message
+              historyMessages.push({
+                id: `history-user-${index}`,
+                role: 'user',
+                content: item.user_prompt,
+                timestamp: item.created_at
+              });
+              
+              // Add AI response
+              historyMessages.push({
+                id: `history-ai-${index}`,
+                role: 'assistant',
+                content: item.ai_response,
+                timestamp: item.created_at
+              });
+            });
+            
+            setChatHistory(historyMessages);
+            toast({
+              title: "Chat History Loaded",
+              description: `Loaded ${history.length} previous conversations for ${websiteUrl}`,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to load chat history:', error);
+          toast({
+            title: "Error Loading History",
+            description: "Failed to load your previous conversations",
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      }
+    };
+    
+    fetchChatHistory();
+  }, [user, websiteUrl, toast]);
 
   const handleSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -96,7 +162,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
             );
           })}
           <div ref={bottomRef} />
-          {isLoading && <AnimatedRocket />}
+          {(isLoading || isLoadingHistory) && <AnimatedRocket />}
         </div>
       </ScrollArea>
       
