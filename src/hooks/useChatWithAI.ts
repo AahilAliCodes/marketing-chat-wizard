@@ -21,7 +21,7 @@ export const useChatWithAI = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('chat-with-recommendations', {
-        body: { websiteUrl, userMessage, campaignType, apiProvider: 'gemini' },
+        body: { websiteUrl, userMessage, campaignType },
       });
 
       if (error) {

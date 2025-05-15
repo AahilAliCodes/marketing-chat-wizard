@@ -12,7 +12,3 @@ verify_jwt = true
 
 [functions.generate-reddit-posts]
 verify_jwt = true
-
-[functions.chat-with-recommendations]
-verify_jwt = false
-
