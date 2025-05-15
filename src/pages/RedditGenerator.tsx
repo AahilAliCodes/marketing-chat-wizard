@@ -9,12 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import RedditPostGenerator, { RedditPost } from '@/components/RedditPostGenerator';
 import RedditPostsDisplay from '@/components/RedditPostsDisplay';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const RedditGenerator = () => {
   const [activeItem, setActiveItem] = useState<string>('reddit');
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [generatedPosts, setGeneratedPosts] = useState<RedditPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -90,6 +92,15 @@ const RedditGenerator = () => {
     navigate('/dashboard');
   };
 
+  const handleUpgrade = () => {
+    setShowUpgradeDialog(false);
+    navigate('/dashboard'); // This should navigate to a billing or subscription page
+    toast({
+      title: "Upgrade Required",
+      description: "This would normally take you to a billing page to upgrade your subscription."
+    });
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
@@ -120,6 +131,8 @@ const RedditGenerator = () => {
             <RedditPostGenerator 
               websiteUrl={websiteUrl} 
               onGenerate={handleGenerate}
+              generatedCount={generatedPosts.length}
+              onLimitReached={() => setShowUpgradeDialog(true)}
             />
           </div>
           
@@ -135,6 +148,26 @@ const RedditGenerator = () => {
           </div>
         </div>
       </div>
+      
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Free Limit Reached</DialogTitle>
+            <DialogDescription className="pt-4">
+              You've reached the limit of 4 free Reddit posts. Upgrade your account to generate more posts and access premium features.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpgrade} className="bg-marketing-purple hover:bg-marketing-purple/90">
+              Upgrade Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <Toaster />
     </div>
   );

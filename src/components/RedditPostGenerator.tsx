@@ -20,9 +20,18 @@ export interface RedditPost {
 interface RedditPostGeneratorProps {
   websiteUrl: string;
   onGenerate?: (posts: RedditPost[]) => void;
+  generatedCount?: number;
+  onLimitReached?: () => void;
 }
 
-const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, onGenerate }) => {
+const FREE_POST_LIMIT = 4;
+
+const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ 
+  websiteUrl, 
+  onGenerate, 
+  generatedCount = 0,
+  onLimitReached 
+}) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [numPosts, setNumPosts] = useState(4);
@@ -36,6 +45,28 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
         variant: "destructive"
       });
       return;
+    }
+
+    // Check if generating more posts would exceed the free limit
+    const requestedPosts = numPosts || 4;
+    const totalPostsAfterGeneration = generatedCount + requestedPosts;
+    
+    if (totalPostsAfterGeneration > FREE_POST_LIMIT) {
+      // If we already have some generated posts, only allow generating up to the limit
+      if (generatedCount < FREE_POST_LIMIT) {
+        const remainingPosts = FREE_POST_LIMIT - generatedCount;
+        setNumPosts(remainingPosts);
+        toast({
+          title: "Free limit adjustment",
+          description: `You can only generate ${remainingPosts} more posts with your free account`,
+        });
+      } else {
+        // If we've already reached the limit, show the upgrade dialog
+        if (onLimitReached) {
+          onLimitReached();
+        }
+        return;
+      }
     }
 
     setIsGenerating(true);
@@ -77,13 +108,15 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
         return;
       }
       
-      // If no existing posts, generate new ones
+      // If no existing posts, generate new ones, but respect the free limit
+      const postsToGenerate = Math.min(numPosts, FREE_POST_LIMIT - generatedCount);
+      
       console.log('Generating new posts for URL:', websiteUrl);
       const { data, error } = await supabase.functions.invoke('generate-reddit-posts', {
         body: { 
           websiteUrl,
           prompt: prompt || "Create engaging Reddit posts that would perform well",
-          numPosts: numPosts || 4
+          numPosts: postsToGenerate
         },
       });
 
@@ -129,6 +162,14 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
           title: "Posts Generated",
           description: `Successfully created ${data.posts.length} Reddit posts`
         });
+        
+        // If this generation brings us to the limit, notify the user
+        if (generatedCount + data.posts.length >= FREE_POST_LIMIT) {
+          toast({
+            title: "Free Limit Reached",
+            description: "You've reached your free limit of 4 Reddit posts. Upgrade to generate more.",
+          });
+        }
       }
       
     } catch (error) {
@@ -142,6 +183,10 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
       setIsGenerating(false);
     }
   };
+
+  // Calculate remaining posts
+  const remainingPosts = Math.max(0, FREE_POST_LIMIT - generatedCount);
+  const atFreeLimit = generatedCount >= FREE_POST_LIMIT;
 
   return (
     <div className="space-y-4">
@@ -166,34 +211,57 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
           <label htmlFor="numPosts" className="block text-sm font-medium text-gray-700 mb-1">
             Number of Posts
           </label>
-          <Input
-            id="numPosts"
-            type="number"
-            min={1}
-            max={8}
-            value={numPosts}
-            onChange={(e) => setNumPosts(parseInt(e.target.value) || 4)}
-            className="w-32"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              id="numPosts"
+              type="number"
+              min={1}
+              max={atFreeLimit ? 0 : Math.min(8, remainingPosts)}
+              value={numPosts}
+              onChange={(e) => setNumPosts(parseInt(e.target.value) || 4)}
+              className="w-32"
+              disabled={atFreeLimit}
+            />
+            <span className="text-sm text-gray-500">
+              {atFreeLimit
+                ? "Free limit reached"
+                : `${remainingPosts} remaining in free plan`}
+            </span>
+          </div>
         </div>
       </div>
 
-      <Button 
-        onClick={generatePosts} 
-        disabled={isGenerating || !websiteUrl}
-        className="bg-marketing-purple hover:bg-marketing-purple/90"
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-            Generating Posts...
-          </>
-        ) : (
-          <>
-            Generate Reddit Posts
-          </>
-        )}
-      </Button>
+      {atFreeLimit ? (
+        <Button 
+          onClick={onLimitReached} 
+          className="bg-marketing-purple hover:bg-marketing-purple/90"
+        >
+          Upgrade to Generate More Posts
+        </Button>
+      ) : (
+        <Button 
+          onClick={generatePosts} 
+          disabled={isGenerating || !websiteUrl}
+          className="bg-marketing-purple hover:bg-marketing-purple/90"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Generating Posts...
+            </>
+          ) : (
+            <>
+              Generate Reddit Posts
+            </>
+          )}
+        </Button>
+      )}
+
+      {!atFreeLimit && (
+        <p className="text-xs text-gray-500 mt-2">
+          Free accounts can generate up to 4 Reddit posts per website. Upgrade for unlimited posts.
+        </p>
+      )}
     </div>
   );
 };
