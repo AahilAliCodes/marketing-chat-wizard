@@ -55,18 +55,18 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
           </Button>
           <Button
             onClick={() => {
-              setActiveItem('runs');
-              navigate('/runs');
+              setActiveItem('reddit');
+              navigate('/reddit-generator');
             }}
             variant="ghost"
             className={`w-full justify-start ${
-              activeItem === 'runs'
+              activeItem === 'runs' || activeItem === 'reddit'
                 ? 'bg-white/10 text-white'
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             <PieChart className="h-5 w-5 md:mr-2" />
-            <span className="hidden md:inline">Runs</span>
+            <span className="hidden md:inline">Reddit Posts</span>
           </Button>
         </div>
       </div>
@@ -97,12 +97,6 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
               <LogIn className="h-5 w-5 md:mr-2" />
               <span className="hidden md:inline">Sign In</span>
             </Button>
-            <img 
-              src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
-              alt="Reddit Logo"
-              className="absolute left-full ml-3 w-10 h-10 rounded-full"
-              style={{ top: 'calc(100% - 52px)' }}
-            />
           </div>
         )}
       </div>

@@ -3,10 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Runs from "./pages/Runs";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import SharedChat from "./pages/SharedChat";
@@ -27,7 +26,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/runs" element={<Runs />} />
+              <Route path="/runs" element={<Navigate to="/reddit-generator" replace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/shared-chat/:chatId" element={<SharedChat />} />
               <Route path="/reddit-generator" element={<RedditGenerator />} />

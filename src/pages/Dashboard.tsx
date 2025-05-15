@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft, MessageCircle } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 
 interface LocationState {
@@ -201,19 +201,8 @@ const Dashboard = () => {
     }
   }, [state?.isAnalyzing, state?.websiteUrl, toast]);
 
-  // Handle Reddit logo click - navigate to runs page with subreddit analysis request
+  // Handle Reddit logo click - navigate to reddit generator page
   const handleRedditClick = () => {
-    navigate('/runs', {
-      state: {
-        action: 'analyze_subreddits',
-        websiteUrl: websiteUrl,
-        campaignType: campaignOptions.length > 0 ? campaignOptions[0].title : undefined
-      }
-    });
-  };
-
-  // Handle Reddit Generator click - navigate to Reddit Generator page with website info
-  const handleRedditGeneratorClick = () => {
     navigate('/reddit-generator');
   };
 
@@ -315,27 +304,19 @@ const Dashboard = () => {
             </div>
           )}
           
-          {/* Reddit logo and Reddit Generator button at the bottom left - only show when no campaign is active */}
+          {/* Reddit logo at the bottom left - only show when no campaign is active */}
           {!activeCampaign && (
             <div id="reddit-icon" className="absolute bottom-4 left-4 z-10 flex gap-3">
               <button 
                 onClick={handleRedditClick}
                 className="flex items-center justify-center w-10 h-10 transition-all hover:scale-110"
-                title="Reddit Subreddit Analyzer"
+                title="Reddit Post Generator"
               >
                 <img 
                   src="/lovable-uploads/50724a29-2e5d-4e61-95de-bbf8a7789dfa.png" 
                   alt="Reddit Logo"
                   className="w-10 h-10 rounded-full shadow-md"
                 />
-              </button>
-              
-              <button 
-                onClick={handleRedditGeneratorClick}
-                className="flex items-center justify-center w-10 h-10 bg-orange-500 rounded-full shadow-md transition-all hover:scale-110"
-                title="Generate Reddit Posts"
-              >
-                <MessageCircle className="w-6 h-6 text-white" />
               </button>
             </div>
           )}
