@@ -13,12 +13,14 @@ export const useChatWithAI = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historySaved, setHistorySaved] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const sendMessageToAI = async (websiteUrl: string, userMessage: string, campaignType?: string) => {
     setIsLoading(true);
     setError(null);
     setAiResponse(null);
+    setHistorySaved(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('chat-with-recommendations', {
@@ -34,10 +36,12 @@ export const useChatWithAI = () => {
       
       // Save chat history for authenticated users
       try {
-        await saveChatHistory(websiteUrl, userMessage, response.response);
+        const saved = await saveChatHistory(websiteUrl, userMessage, response.response);
+        setHistorySaved(saved);
+        console.log(`Chat history saved status: ${saved ? 'Success' : 'Failed'}`);
       } catch (historyError) {
         console.warn('Failed to save chat history:', historyError);
-        // Don't fail the main operation if history saving fails
+        setHistorySaved(false);
       }
       
       return response;
@@ -45,6 +49,7 @@ export const useChatWithAI = () => {
       const errorMessage = err.message || 'Error communicating with AI';
       console.error('AI chat error:', errorMessage);
       setError(errorMessage);
+      setHistorySaved(false);
       
       toast({
         title: 'AI Chat Error',
@@ -63,5 +68,6 @@ export const useChatWithAI = () => {
     aiResponse,
     isLoading,
     error,
+    historySaved,
   };
 };
