@@ -22,27 +22,37 @@ const RedditGenerator = () => {
     // Fetch the most recent website URL that was analyzed
     const fetchRecentWebsite = async () => {
       try {
-        const { data: recentAnalysis } = await supabase
+        console.log('Fetching recent website analysis');
+        const { data: recentAnalysis, error: analysisError } = await supabase
           .from('website_analyses')
           .select('website_url')
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
         
+        if (analysisError) {
+          console.error('Error fetching recent website:', analysisError);
+          setIsLoading(false);
+          return;
+        }
+        
         if (recentAnalysis) {
+          console.log('Found recent website:', recentAnalysis.website_url);
           setWebsiteUrl(recentAnalysis.website_url);
           
           // Check if there are any existing generated posts for this URL
-          const { data: existingPosts, error } = await supabase
+          console.log('Checking for existing posts for URL:', recentAnalysis.website_url);
+          const { data: existingPosts, error: postsError } = await supabase
             .from('generated_reddit_posts')
             .select('*')
             .eq('website_url', recentAnalysis.website_url);
           
-          if (error) {
-            console.error('Error fetching existing posts:', error);
+          if (postsError) {
+            console.error('Error fetching existing posts:', postsError);
           }
           
           if (existingPosts && existingPosts.length > 0) {
+            console.log('Found existing posts:', existingPosts);
             const formattedPosts = existingPosts.map(post => ({
               id: post.id,
               title: post.title,
@@ -58,10 +68,12 @@ const RedditGenerator = () => {
               title: "Existing Posts Loaded",
               description: `Loaded ${formattedPosts.length} existing Reddit posts for this website`
             });
+          } else {
+            console.log('No existing posts found');
           }
         }
       } catch (error) {
-        console.error('Error fetching recent website:', error);
+        console.error('Error in fetchRecentWebsite:', error);
       } finally {
         setIsLoading(false);
       }

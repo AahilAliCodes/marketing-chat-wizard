@@ -49,10 +49,12 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
       
       if (fetchError) {
         console.error('Error fetching existing posts:', fetchError);
+        throw new Error(fetchError.message);
       }
       
       // If we have existing posts, use those instead of generating new ones
       if (existingPosts && existingPosts.length > 0) {
+        console.log('Found existing posts:', existingPosts);
         const formattedPosts = existingPosts.map(post => ({
           id: post.id,
           title: post.title,
@@ -76,6 +78,7 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
       }
       
       // If no existing posts, generate new ones
+      console.log('Generating new posts for URL:', websiteUrl);
       const { data, error } = await supabase.functions.invoke('generate-reddit-posts', {
         body: { 
           websiteUrl,
@@ -85,8 +88,11 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
       });
 
       if (error) {
+        console.error('Function invoke error:', error);
         throw new Error(error.message);
       }
+      
+      console.log('Generated posts response:', data);
       
       if (data?.posts && data.posts.length > 0) {
         // Save the generated posts to the database
@@ -97,6 +103,8 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
           image_url: post.imageUrl,
           subreddit: post.subreddit
         }));
+        
+        console.log('Saving posts to database:', postsToInsert);
         
         const { error: insertError } = await supabase
           .from('generated_reddit_posts')
@@ -109,6 +117,8 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
             description: "Generated posts couldn't be saved to the database",
             variant: "destructive"
           });
+        } else {
+          console.log('Successfully saved posts to database');
         }
         
         if (onGenerate) {

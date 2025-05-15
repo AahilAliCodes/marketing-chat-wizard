@@ -18,16 +18,20 @@ serve(async (req) => {
 
   try {
     if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is not set in the environment");
       throw new Error("OPENAI_API_KEY is not set in the environment");
     }
 
     const { websiteUrl, prompt, numPosts } = await req.json();
     
     if (!websiteUrl) {
+      console.error("websiteUrl is required");
       throw new Error("websiteUrl is required");
     }
 
+    console.log(`Generating ${numPosts || 4} Reddit posts for ${websiteUrl}`);
     const posts = await generateRedditPosts(websiteUrl, prompt, numPosts || 4);
+    console.log(`Generated ${posts.length} Reddit posts`);
     
     return new Response(
       JSON.stringify({ posts }),
@@ -56,13 +60,18 @@ interface RedditPostData {
 
 async function generateRedditPosts(websiteUrl: string, customPrompt: string, numPosts: number): Promise<any[]> {
   try {
+    console.log("Starting post content generation");
     // Step 1: Generate post content using GPT
     const postsData = await generatePostContent(websiteUrl, customPrompt, numPosts);
+    console.log("Post content generated successfully");
+    
     const generatedPosts = [];
     
     // Step 2: For each post, generate an image
     for (const postData of postsData) {
+      console.log(`Generating image for post: ${postData.title}`);
       const imageUrl = await generateImageForPost(postData.imagePrompt);
+      console.log(`Image generated with URL: ${imageUrl}`);
       
       generatedPosts.push({
         id: crypto.randomUUID(),
@@ -74,6 +83,7 @@ async function generateRedditPosts(websiteUrl: string, customPrompt: string, num
       });
     }
     
+    console.log("All posts generated successfully");
     return generatedPosts;
   } catch (error) {
     console.error("Error generating Reddit posts:", error);
@@ -98,6 +108,7 @@ async function generatePostContent(websiteUrl: string, customPrompt: string, num
   Format your response strictly as a JSON array with objects containing title, content, subreddit, and imagePrompt fields.`;
 
   try {
+    console.log("Making OpenAI API call for post content");
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -116,11 +127,16 @@ async function generatePostContent(websiteUrl: string, customPrompt: string, num
 
     if (!response.ok) {
       const error = await response.json();
+      console.error("OpenAI API error response:", error);
       throw new Error(error.error?.message || "Failed to generate post content");
     }
 
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    console.log("OpenAI API response received");
+    
+    const content = data.choices[0].message.content;
+    console.log("Parsing JSON response");
+    const result = JSON.parse(content);
     
     return result.posts || [];
   } catch (error) {
@@ -131,6 +147,7 @@ async function generatePostContent(websiteUrl: string, customPrompt: string, num
 
 async function generateImageForPost(imagePrompt: string): Promise<string> {
   try {
+    console.log("Making DALL-E API call for image generation");
     const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
@@ -148,10 +165,12 @@ async function generateImageForPost(imagePrompt: string): Promise<string> {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error("DALL-E API error response:", error);
       throw new Error(error.error?.message || "Failed to generate image");
     }
 
     const data = await response.json();
+    console.log("DALL-E API response received");
     return data.data[0].url;
   } catch (error) {
     console.error("DALL-E API error:", error);
