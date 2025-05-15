@@ -89,6 +89,36 @@ export type Database = {
           },
         ]
       }
+      generated_reddit_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          image_url: string
+          subreddit: string
+          title: string
+          website_url: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          image_url: string
+          subreddit: string
+          title: string
+          website_url: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          subreddit?: string
+          title?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

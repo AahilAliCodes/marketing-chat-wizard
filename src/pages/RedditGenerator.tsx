@@ -14,6 +14,7 @@ const RedditGenerator = () => {
   const [activeItem, setActiveItem] = useState<string>('reddit');
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [generatedPosts, setGeneratedPosts] = useState<RedditPost[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -30,14 +31,44 @@ const RedditGenerator = () => {
         
         if (recentAnalysis) {
           setWebsiteUrl(recentAnalysis.website_url);
+          
+          // Check if there are any existing generated posts for this URL
+          const { data: existingPosts, error } = await supabase
+            .from('generated_reddit_posts')
+            .select('*')
+            .eq('website_url', recentAnalysis.website_url);
+          
+          if (error) {
+            console.error('Error fetching existing posts:', error);
+          }
+          
+          if (existingPosts && existingPosts.length > 0) {
+            const formattedPosts = existingPosts.map(post => ({
+              id: post.id,
+              title: post.title,
+              content: post.content,
+              imageUrl: post.image_url,
+              subreddit: post.subreddit,
+              dateGenerated: post.created_at
+            }));
+            
+            setGeneratedPosts(formattedPosts);
+            
+            toast({
+              title: "Existing Posts Loaded",
+              description: `Loaded ${formattedPosts.length} existing Reddit posts for this website`
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching recent website:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchRecentWebsite();
-  }, []);
+  }, [toast]);
 
   const handleGenerate = (posts: RedditPost[]) => {
     setGeneratedPosts(posts);
@@ -82,7 +113,13 @@ const RedditGenerator = () => {
           
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <h2 className="text-lg font-semibold mb-4">Generated Posts</h2>
-            <RedditPostsDisplay posts={generatedPosts} />
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading...</p>
+              </div>
+            ) : (
+              <RedditPostsDisplay posts={generatedPosts} />
+            )}
           </div>
         </div>
       </div>

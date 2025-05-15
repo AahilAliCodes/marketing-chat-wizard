@@ -41,6 +41,41 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
     setIsGenerating(true);
     
     try {
+      // First check if we already have generated posts for this URL
+      const { data: existingPosts, error: fetchError } = await supabase
+        .from('generated_reddit_posts')
+        .select('*')
+        .eq('website_url', websiteUrl);
+      
+      if (fetchError) {
+        console.error('Error fetching existing posts:', fetchError);
+      }
+      
+      // If we have existing posts, use those instead of generating new ones
+      if (existingPosts && existingPosts.length > 0) {
+        const formattedPosts = existingPosts.map(post => ({
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          imageUrl: post.image_url,
+          subreddit: post.subreddit,
+          dateGenerated: post.created_at
+        }));
+        
+        if (onGenerate) {
+          onGenerate(formattedPosts);
+        }
+        
+        toast({
+          title: "Existing Posts Loaded",
+          description: `Loaded ${formattedPosts.length} existing Reddit posts for this website`
+        });
+        
+        setIsGenerating(false);
+        return;
+      }
+      
+      // If no existing posts, generate new ones
       const { data, error } = await supabase.functions.invoke('generate-reddit-posts', {
         body: { 
           websiteUrl,
@@ -52,15 +87,39 @@ const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ websiteUrl, o
       if (error) {
         throw new Error(error.message);
       }
-
-      if (onGenerate && data?.posts) {
-        onGenerate(data.posts);
-      }
       
-      toast({
-        title: "Posts Generated",
-        description: `Successfully created ${data?.posts?.length || 0} Reddit posts`
-      });
+      if (data?.posts && data.posts.length > 0) {
+        // Save the generated posts to the database
+        const postsToInsert = data.posts.map(post => ({
+          website_url: websiteUrl,
+          title: post.title,
+          content: post.content,
+          image_url: post.imageUrl,
+          subreddit: post.subreddit
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('generated_reddit_posts')
+          .insert(postsToInsert);
+          
+        if (insertError) {
+          console.error('Error saving posts to database:', insertError);
+          toast({
+            title: "Storage Error",
+            description: "Generated posts couldn't be saved to the database",
+            variant: "destructive"
+          });
+        }
+        
+        if (onGenerate) {
+          onGenerate(data.posts);
+        }
+        
+        toast({
+          title: "Posts Generated",
+          description: `Successfully created ${data.posts.length} Reddit posts`
+        });
+      }
       
     } catch (error) {
       console.error('Failed to generate posts:', error);
