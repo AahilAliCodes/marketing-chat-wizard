@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, MessageSquare, Users, Video, FileText, Play, Sparkles, Share2, Save, SendHorizontal, Rocket, Link, CheckCircle } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
@@ -107,37 +108,15 @@ const FormattedMessage: React.FC<{ content: string }> = ({ content }) => {
               {headerText}
             </h3>
             <div className="pl-4 border-l-2 border-purple-200">
-              {content.map((line, lineIndex) => {
-                // Handle bullet points
+              {content.join('\n').split('\n').map((line, lineIndex) => {
+                // Handle bullet points (lines starting with -)
                 if (line.trim().startsWith('-')) {
-                  const parts = line.split('**');
                   return (
                     <div key={lineIndex} className="flex items-start gap-2 mb-3">
                       <span className="text-purple-800 mt-1.5">•</span>
                       <div className="text-gray-700">
-                        {parts.map((part, partIndex) => (
-                          partIndex % 2 === 0 ? (
-                            <span key={partIndex}>{part.replace(/^-\s*/, '')}</span>
-                          ) : (
-                            <span key={partIndex} className="font-medium text-purple-800">{part}</span>
-                          )
-                        ))}
+                        {line.replace(/^-\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                       </div>
-                    </div>
-                  );
-                }
-                // Handle bold text
-                if (line.includes('**')) {
-                  const parts = line.split('**');
-                  return (
-                    <div key={lineIndex} className="mb-3 text-gray-700">
-                      {parts.map((part, partIndex) => (
-                        partIndex % 2 === 0 ? (
-                          <span key={partIndex}>{part}</span>
-                        ) : (
-                          <span key={partIndex} className="font-medium text-purple-800">{part}</span>
-                        )
-                      ))}
                     </div>
                   );
                 }
@@ -147,20 +126,59 @@ const FormattedMessage: React.FC<{ content: string }> = ({ content }) => {
                     <div key={lineIndex} className="flex items-start gap-2 mb-3">
                       <span className="text-purple-800 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
                       <div className="text-gray-700">
-                        {line.replace(/^\d+\.\s*/, '')}
+                        {line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                       </div>
                     </div>
                   );
                 }
-                return <div key={lineIndex} className="mb-3 text-gray-700">{line}</div>;
+                // Handle regular text (remove all markdown formatting)
+                return (
+                  <div key={lineIndex} className="mb-3 text-gray-700">
+                    {line.replace(/\*\*/g, '').replace(/\*/g, '')}
+                  </div>
+                );
               })}
             </div>
           </div>
         );
       }
       
-      // Handle regular text
-      return <div key={index} className="mb-3 text-gray-700">{section}</div>;
+      // Process plain text sections (non-header sections)
+      const lines = section.split('\n');
+      return (
+        <div key={index} className="mb-3">
+          {lines.map((line, lineIndex) => {
+            // Handle bullet points
+            if (line.trim().startsWith('-')) {
+              return (
+                <div key={lineIndex} className="flex items-start gap-2 mb-3">
+                  <span className="text-purple-800 mt-1.5">•</span>
+                  <div className="text-gray-700">
+                    {line.replace(/^-\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
+                  </div>
+                </div>
+              );
+            }
+            // Handle numbered lists
+            if (/^\d+\./.test(line.trim())) {
+              return (
+                <div key={lineIndex} className="flex items-start gap-2 mb-3">
+                  <span className="text-purple-800 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
+                  <div className="text-gray-700">
+                    {line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
+                  </div>
+                </div>
+              );
+            }
+            // Regular text (remove markdown formatting)
+            return (
+              <div key={lineIndex} className="mb-3 text-gray-700">
+                {line.replace(/\*\*/g, '').replace(/\*/g, '')}
+              </div>
+            );
+          })}
+        </div>
+      );
     });
   };
 
