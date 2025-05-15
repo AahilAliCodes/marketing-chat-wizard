@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
-import { saveChatHistory } from '@/services/ChatHistoryService';
 
 interface AIChatResponse {
   response: string;
@@ -31,15 +30,6 @@ export const useChatWithAI = () => {
 
       const response = data as AIChatResponse;
       setAiResponse(response.response);
-      
-      // Save chat history for authenticated users
-      try {
-        await saveChatHistory(websiteUrl, userMessage, response.response);
-      } catch (historyError) {
-        console.warn('Failed to save chat history:', historyError);
-        // Don't fail the main operation if history saving fails
-      }
-      
       return response;
     } catch (err: any) {
       const errorMessage = err.message || 'Error communicating with AI';

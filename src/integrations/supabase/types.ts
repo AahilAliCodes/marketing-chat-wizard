@@ -170,33 +170,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_chat_history: {
-        Row: {
-          ai_response: string
-          created_at: string
-          id: string
-          user_id: string | null
-          user_prompt: string
-          website_url: string
-        }
-        Insert: {
-          ai_response: string
-          created_at?: string
-          id?: string
-          user_id?: string | null
-          user_prompt: string
-          website_url: string
-        }
-        Update: {
-          ai_response?: string
-          created_at?: string
-          id?: string
-          user_id?: string | null
-          user_prompt?: string
-          website_url?: string
-        }
-        Relationships: []
-      }
       website_analyses: {
         Row: {
           constraints: string[]
