@@ -96,8 +96,9 @@ serve(async (req) => {
         );
       }
       
-      // Call Gemini API
-      const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
+      // Call Gemini API - using the correct API version and model name
+      console.log('Calling Gemini API...');
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,59 +123,28 @@ serve(async (req) => {
       });
 
       const geminiData = await response.json();
+      console.log('Gemini API response status:', response.status);
       
       if (!response.ok) {
-        console.error('Gemini API error:', geminiData);
-        return new Response(
-          JSON.stringify({ error: `Gemini API error: ${geminiData.error?.message || 'Unknown error'}` }), 
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.error('Gemini API error:', JSON.stringify(geminiData));
+        
+        // Fall back to OpenAI if Gemini fails
+        console.log('Falling back to OpenAI...');
+        return await callOpenAI(systemPrompt, userMessage, recommendations, corsHeaders, openaiApiKey);
       }
 
-      aiResponse = geminiData.candidates[0].content.parts[0].text;
+      try {
+        aiResponse = geminiData.candidates[0].content.parts[0].text;
+      } catch (parseError) {
+        console.error('Error parsing Gemini response:', parseError, 'Response data:', JSON.stringify(geminiData));
+        
+        // Fall back to OpenAI if we can't parse Gemini response
+        console.log('Falling back to OpenAI due to response parsing error...');
+        return await callOpenAI(systemPrompt, userMessage, recommendations, corsHeaders, openaiApiKey);
+      }
     } else {
-      // Call OpenAI API as fallback
-      if (!openaiApiKey || openaiApiKey.trim() === "") {
-        return new Response(
-          JSON.stringify({ error: "OpenAI API key is not configured" }), 
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}`
-            }
-          ],
-          temperature: 0.5,
-          max_tokens: 512
-        }),
-      });
-
-      const openaiData = await response.json();
-      
-      if (!response.ok) {
-        console.error('OpenAI API error:', openaiData);
-        return new Response(
-          JSON.stringify({ error: `OpenAI API error: ${openaiData.error?.message || 'Unknown error'}` }), 
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      aiResponse = openaiData.choices[0].message.content;
+      // Call OpenAI API
+      return await callOpenAI(systemPrompt, userMessage, recommendations, corsHeaders, openaiApiKey);
     }
 
     return new Response(
@@ -198,3 +168,61 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to call OpenAI API
+async function callOpenAI(systemPrompt, userMessage, recommendations, corsHeaders, openaiApiKey) {
+  // Check if we have the OpenAI API key
+  if (!openaiApiKey || openaiApiKey.trim() === "") {
+    return new Response(
+      JSON.stringify({ error: "OpenAI API key is not configured" }), 
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log('Calling OpenAI API...');
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openaiApiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}`
+        }
+      ],
+      temperature: 0.5,
+      max_tokens: 512
+    }),
+  });
+
+  const openaiData = await response.json();
+  
+  if (!response.ok) {
+    console.error('OpenAI API error:', openaiData);
+    return new Response(
+      JSON.stringify({ error: `OpenAI API error: ${openaiData.error?.message || 'Unknown error'}` }), 
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const aiResponse = openaiData.choices[0].message.content;
+  
+  return new Response(
+    JSON.stringify({ 
+      response: aiResponse,
+      provider: 'openai',
+    }), 
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
