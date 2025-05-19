@@ -143,6 +143,74 @@ export type Database = {
         }
         Relationships: []
       }
+      session: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          token: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+          website: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id: string
+          ip_address?: string | null
+          token: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          website: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          token?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          website?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_chat_channels: {
         Row: {
           created_at: string
@@ -167,6 +235,33 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_chat_history: {
+        Row: {
+          ai_response: string
+          created_at: string
+          id: string
+          user_id: string | null
+          user_prompt: string
+          website_url: string
+        }
+        Insert: {
+          ai_response: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+          user_prompt: string
+          website_url: string
+        }
+        Update: {
+          ai_response?: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+          user_prompt?: string
+          website_url?: string
         }
         Relationships: []
       }
@@ -229,7 +324,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_session: {
+        Args: { session_data: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
