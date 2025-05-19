@@ -76,18 +76,38 @@ serve(async (req) => {
       console.error('Error fetching website analysis:', analysisError);
     }
 
+    // Fetch subreddit recommendations if they exist
+    const { data: subredditRecommendations, error: subredditError } = await supabase
+      .from('subreddit_recommendations')
+      .select('*')
+      .eq('website_url', websiteUrl);
+
+    if (subredditError) {
+      console.error('Error fetching subreddit recommendations:', subredditError);
+    }
+
     // Prepare the context for the AI
     let context = {
       website: websiteUrl,
       recommendations: recommendations || [],
       websiteAnalysis: websiteAnalysis || null,
-      campaignType: campaignType || null
+      campaignType: campaignType || null,
+      subreddits: subredditRecommendations || []
     };
 
-    // Create personalized system prompt based on campaign type
-    let systemPrompt = `You are a marketing assistant that provides short and concise answers based on campaign recommendations data for ${websiteUrl}.`;
-    
-    systemPrompt += ` Answer user questions specifically and directly related to the provided data.
+    // Create an improved system prompt focused on actionable workflows
+    let systemPrompt = `You are a marketing assistant that provides practical, step-by-step guidance for ${websiteUrl}.
+      
+      Your responses should:
+      1. Focus on actionable advice rather than just repeating statistics
+      2. Break down processes into clear, numbered steps that the user can follow
+      3. Provide specific examples and templates when relevant
+      4. Include timelines and measurable goals where appropriate
+      5. Suggest tools or resources that could help implement your recommendations
+      
+      Avoid simply repeating campaign statistics like budget, ROI, or difficulty level unless specifically asked.
+      Instead, explain HOW to implement campaigns with concrete actions and measurable milestones.
+      
       If you don't have enough information, say so rather than making things up.`;
 
     // Call OpenAI API with the recommendations and user message
@@ -106,11 +126,11 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}`
+            content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}\n\nWebsite analysis: ${JSON.stringify(websiteAnalysis)}\n\nSubreddit recommendations: ${JSON.stringify(subredditRecommendations || [])}`
           }
         ],
         temperature: 0.5,
-        max_tokens: 512
+        max_tokens: 600
       }),
     });
 
