@@ -36,7 +36,7 @@ const RedditPostsDisplay: React.FC<RedditPostsDisplayProps> = ({ posts }) => {
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <div>
-                <div className="text-sm text-gray-500">u/{post.subreddit}</div>
+                <div className="text-sm text-gray-500">r/{post.subreddit}</div>
                 <CardTitle className="text-lg font-semibold mt-1">{post.title}</CardTitle>
               </div>
             </div>

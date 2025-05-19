@@ -20,6 +20,34 @@ const RedditGenerator = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // First, make sure the storage bucket exists
+  useEffect(() => {
+    const createBucketIfNeeded = async () => {
+      try {
+        // Check if the bucket exists
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === 'reddit-images');
+        
+        if (!bucketExists) {
+          // Create the bucket
+          const { data, error } = await supabase.storage.createBucket('reddit-images', {
+            public: true
+          });
+          
+          if (error) {
+            console.error('Error creating storage bucket:', error);
+          } else {
+            console.log('Created reddit-images storage bucket');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking/creating bucket:', error);
+      }
+    };
+    
+    createBucketIfNeeded();
+  }, []);
+
   useEffect(() => {
     // Fetch the most recent website URL that was analyzed
     const fetchRecentWebsite = async () => {
@@ -154,7 +182,7 @@ const RedditGenerator = () => {
           <DialogHeader>
             <DialogTitle>Free Limit Reached</DialogTitle>
             <DialogDescription className="pt-4">
-              You've reached the limit of 4 free Reddit posts. Upgrade your account to generate more posts and access premium features.
+              You've reached the limit of 4 free Reddit posts. Upgrade your account to generate more posts and access premium features, or use your own images for unlimited posts.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 justify-end">

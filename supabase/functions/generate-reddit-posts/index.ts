@@ -1,4 +1,3 @@
-
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -22,7 +21,7 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY is not set in the environment");
     }
 
-    const { websiteUrl, prompt, numPosts } = await req.json();
+    const { websiteUrl, prompt, numPosts, customImage } = await req.json();
     
     if (!websiteUrl) {
       console.error("websiteUrl is required");
@@ -30,7 +29,7 @@ serve(async (req) => {
     }
 
     console.log(`Generating ${numPosts || 4} Reddit posts for ${websiteUrl}`);
-    const posts = await generateRedditPosts(websiteUrl, prompt, numPosts || 4);
+    const posts = await generateRedditPosts(websiteUrl, prompt, numPosts || 4, customImage);
     console.log(`Generated ${posts.length} Reddit posts`);
     
     return new Response(
@@ -58,7 +57,7 @@ interface RedditPostData {
   imagePrompt: string;
 }
 
-async function generateRedditPosts(websiteUrl: string, customPrompt: string, numPosts: number): Promise<any[]> {
+async function generateRedditPosts(websiteUrl: string, customPrompt: string, numPosts: number, customImage?: string): Promise<any[]> {
   try {
     console.log("Starting post content generation");
     // Step 1: Generate post content using GPT
@@ -67,11 +66,22 @@ async function generateRedditPosts(websiteUrl: string, customPrompt: string, num
     
     const generatedPosts = [];
     
-    // Step 2: For each post, generate an image
+    // Step 2: For each post, generate an image (or use the custom one)
     for (const postData of postsData) {
-      console.log(`Generating image for post: ${postData.title}`);
-      const imageUrl = await generateImageForPost(postData.imagePrompt);
-      console.log(`Image generated with URL: ${imageUrl}`);
+      console.log(`Processing post: ${postData.title}`);
+      
+      let imageUrl;
+      
+      if (customImage) {
+        // If a custom image was provided, use it instead of generating one
+        console.log("Using custom image instead of generating one");
+        imageUrl = customImage;
+      } else {
+        // Otherwise generate an image with DALL-E
+        console.log(`Generating image for post: ${postData.title}`);
+        imageUrl = await generateImageForPost(postData.imagePrompt);
+        console.log(`Image generated with URL: ${imageUrl}`);
+      }
       
       generatedPosts.push({
         id: crypto.randomUUID(),
@@ -105,7 +115,7 @@ async function generatePostContent(websiteUrl: string, customPrompt: string, num
   
   ${customPrompt || "Create engaging Reddit posts for this website that would perform well and drive traffic."}
   
-  Format your response strictly as a JSON array with objects containing title, content, subreddit, and imagePrompt fields.`;
+  Format your response strictly as a JSON object with a "posts" array containing ${numPosts} objects. Each object must have these fields: "title", "content", "subreddit", and "imagePrompt".`;
 
   try {
     console.log("Making OpenAI API call for post content");
@@ -138,7 +148,8 @@ async function generatePostContent(websiteUrl: string, customPrompt: string, num
     console.log("Parsing JSON response");
     const result = JSON.parse(content);
     
-    return result.posts || [];
+    // Make sure we're returning exactly the number of posts requested
+    return (result.posts || []).slice(0, numPosts);
   } catch (error) {
     console.error("OpenAI API error:", error);
     throw error;
