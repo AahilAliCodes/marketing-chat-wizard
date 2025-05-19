@@ -41,7 +41,7 @@ const ChatInputForm: React.FC<ChatInputFormProps> = ({
       />
       <div className="relative">
         <Textarea
-          className="flex-1 min-h-[60px] max-h-[120px] resize-none border-2 border-red-200 focus:border-red-600 focus:ring-2 focus:ring-red-200 pr-12 transition-all"
+          className="flex-1 min-h-[60px] max-h-[120px] resize-none border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 pr-12 transition-all"
           placeholder={`Ask about ${campaignType || 'marketing strategies'}...`}
           value={userMessage}
           onChange={(e) => setUserMessage(e.target.value)}
@@ -55,7 +55,7 @@ const ChatInputForm: React.FC<ChatInputFormProps> = ({
         />
         <Button 
           type="submit" 
-          className="absolute right-2 bottom-2 h-10 w-10 p-0 bg-red-600 hover:bg-red-700"
+          className="absolute right-2 bottom-2 h-10 w-10 p-0 bg-purple-600 hover:bg-purple-700"
           disabled={!userMessage.trim() || isLoading}
         >
           {isLoading ? (

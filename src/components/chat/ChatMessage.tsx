@@ -18,8 +18,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, showPlayButton, onPl
         message.role === 'user' 
           ? 'bg-gray-100 border-gray-200' 
           : message.role === 'BLASTari' 
-            ? 'bg-red-50 border-red-200' 
-            : 'bg-red-100 border-red-200'
+            ? 'bg-marketing-purple/5 border-marketing-purple/20' 
+            : 'bg-marketing-purple/10 border-marketing-purple/30'
       }`}
     >
       <CardContent className="p-4">

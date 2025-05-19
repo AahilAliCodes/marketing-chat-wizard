@@ -252,16 +252,16 @@ const Dashboard = () => {
                 campaignOptions.map((campaign) => (
                   <div
                     key={campaign.id}
-                    className="relative flex flex-col border-2 rounded-2xl shadow-[0_0_16px_0_rgba(233,70,62,0.25)] hover:shadow-[0_0_32px_4px_rgba(233,70,62,0.45)] transition-all overflow-hidden bg-gradient-to-br from-white via-red-50 to-red-100 border-red-200"
+                    className="relative flex flex-col border-2 rounded-2xl shadow-[0_0_16px_0_rgba(128,90,213,0.25)] hover:shadow-[0_0_32px_4px_rgba(128,90,213,0.45)] transition-all overflow-hidden bg-gradient-to-br from-white via-purple-50 to-purple-100 border-marketing-purple/30"
                   >
                     <div 
                       onClick={() => setActiveCampaign(campaign.id)}
-                      className="p-8 flex flex-col items-center text-center hover:border-red-600 hover:bg-red-50 transition-all cursor-pointer"
+                      className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/10 transition-all cursor-pointer"
                     >
-                      <div className="bg-red-100 p-4 rounded-full mb-6 shadow-[0_0_12px_0_rgba(233,70,62,0.15)]">
+                      <div className="bg-marketing-purple/10 p-4 rounded-full mb-6 shadow-[0_0_12px_0_rgba(128,90,213,0.15)]">
                         {campaign.icon}
                       </div>
-                      <h3 className="text-xl font-semibold mb-3 text-red-600 drop-shadow">{campaign.title}</h3>
+                      <h3 className="text-xl font-semibold mb-3 text-marketing-purple drop-shadow">{campaign.title}</h3>
                       <div className="text-sm text-gray-500 mb-4">
                         <span className="font-medium">Platform:</span> {campaign.platform}
                       </div>

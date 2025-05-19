@@ -187,30 +187,6 @@ export type Database = {
           },
         ]
       }
-      subreddit_recommendations: {
-        Row: {
-          created_at: string
-          id: string
-          reason: string | null
-          subreddit: string
-          website_url: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          reason?: string | null
-          subreddit: string
-          website_url: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          reason?: string | null
-          subreddit?: string
-          website_url?: string
-        }
-        Relationships: []
-      }
       user: {
         Row: {
           created_at: string

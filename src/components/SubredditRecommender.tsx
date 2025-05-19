@@ -81,8 +81,8 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
 
   return (
     <div className="flex flex-col space-y-6">
-      <Card className="border-red-200">
-        <CardHeader className="bg-red-100">
+      <Card className="border-marketing-purple/30">
+        <CardHeader className="bg-marketing-purple/10">
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
             <span>Reddit Strategy AI</span>
@@ -126,12 +126,12 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
             <div className="space-y-4">
               <div className="h-2 bg-gray-200 rounded overflow-hidden">
                 <div 
-                  className="h-full bg-red-600 transition-all"
+                  className="h-full bg-marketing-purple transition-all"
                   style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
                 />
               </div>
               <div className="flex items-center gap-3">
-                <Bot className="h-6 w-6 animate-pulse text-red-600" />
+                <Bot className="h-6 w-6 animate-pulse text-marketing-purple" />
                 <div>
                   <h4 className="font-medium">{steps[currentStep]}</h4>
                   <p className="text-sm text-gray-500">Step {currentStep + 1} of {steps.length}</p>
@@ -141,7 +141,7 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
           ) : results ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="h-5 w-5 text-red-600" />
+                <MessageSquare className="h-5 w-5 text-marketing-purple" />
                 <h3 className="font-medium">AI Reasoning</h3>
               </div>
               <p className="text-sm text-gray-700 mb-6 leading-relaxed">
@@ -165,10 +165,10 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
               <ScrollArea className="h-[400px] pr-4">
                 <div className="space-y-4">
                   {results.map((subreddit, index) => (
-                    <div key={index} className="p-3 border rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors">
+                    <div key={index} className="p-3 border rounded-lg hover:border-marketing-purple/50 hover:bg-marketing-purple/5 transition-colors">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4 text-red-600" />
+                          <Search className="h-4 w-4 text-marketing-purple" />
                           <h4 className="font-medium">r/{subreddit.name}</h4>
                         </div>
                         {subreddit.subscribers && (
@@ -182,7 +182,7 @@ const SubredditRecommender: React.FC<SubredditRecommenderProps> = ({
                         {subreddit.engagement && (
                           <div className="flex justify-between">
                             <span>Engagement:</span>
-                            <span className="font-medium text-red-600">{subreddit.engagement}</span>
+                            <span className="font-medium text-marketing-purple">{subreddit.engagement}</span>
                           </div>
                         )}
                       </div>

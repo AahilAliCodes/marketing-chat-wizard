@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,7 +8,7 @@ import ChatHeader from './chat/ChatHeader';
 import ChatMessage from './chat/ChatMessage';
 import ChatInputForm from './chat/ChatInputForm';
 import ShareChat from './chat/ShareChat';
-import { AnimatedRocket } from './chat/AnimatedRocket';
+import AnimatedRocket from './chat/AnimatedRocket';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;

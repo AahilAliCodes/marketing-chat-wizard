@@ -25,7 +25,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ campaignType, websiteUrl }) => 
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        <div className="bg-red-100 p-2 rounded-full">
+        <div className="bg-marketing-purple/10 p-2 rounded-full">
           {getCampaignIcon()}
         </div>
         <div>
