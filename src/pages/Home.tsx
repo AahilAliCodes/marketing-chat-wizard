@@ -75,11 +75,11 @@ const Home = () => {
 
       <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
         <div className="bg-marketing-purple/10 text-marketing-purple font-medium px-4 py-2 rounded-full mb-6">
-          AI-Powered Marketing Assistant
+          AI-Powered Reddit Marketing
         </div>
         
         <h1 className="text-4xl md:text-6xl font-bold mb-6 max-w-5xl">
-          Launch <span className="text-marketing-purple">high-performing</span> ad campaigns in seconds
+          Autopilot <span className="text-red-600">Reddit</span> ad campaigns — zero karma needed
         </h1>
         
         {/* <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-3xl">
