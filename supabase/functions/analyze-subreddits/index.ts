@@ -62,11 +62,11 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
         messages: [
           {
             role: "system",
-            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend 5 subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name, reason it's a good fit, a suggested post title, and content.`
+            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend 5 subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name, reason it's a good fit, a suggested post title, and content. Respond with JSON data.`
           },
           {
             role: "user",
-            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend 5 subreddits where this business can engage effectively.`
+            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend 5 subreddits where this business can engage effectively. Return the data in JSON format.`
           }
         ],
         temperature: 0.7,

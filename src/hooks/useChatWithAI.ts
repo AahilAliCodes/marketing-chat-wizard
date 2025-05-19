@@ -28,6 +28,10 @@ export const useChatWithAI = () => {
         throw new Error(error.message || 'Failed to get response from AI');
       }
 
+      if (!data) {
+        throw new Error('No response received from AI');
+      }
+
       const response = data as AIChatResponse;
       setAiResponse(response.response);
       return response;

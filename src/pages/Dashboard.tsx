@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -10,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw, MessageCircleMore } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 import SubredditRecommendations from '@/components/SubredditRecommendations';
 
@@ -48,6 +47,7 @@ const Dashboard = () => {
   // Function to get icon based on platform
   const getPlatformIcon = (platform: string) => {
     const platformLower = platform.toLowerCase();
+    if (platformLower.includes('reddit')) return <MessageCircleMore className="h-6 w-6" />;
     if (platformLower.includes('discord')) return <Users className="h-6 w-6" />;
     if (platformLower.includes('tiktok') || platformLower.includes('video')) return <Video className="h-6 w-6" />;
     if (platformLower.includes('content') || platformLower.includes('blog') || platformLower.includes('medium')) return <FileText className="h-6 w-6" />;
@@ -67,7 +67,7 @@ const Dashboard = () => {
         throw error;
       }
 
-      if (recommendations) {
+      if (recommendations && recommendations.length > 0) {
         let formattedRecommendations = recommendations.map(rec => ({
           id: rec.id,
           title: rec.title,
@@ -80,7 +80,7 @@ const Dashboard = () => {
           icon: getPlatformIcon(rec.platform)
         }));
         
-        // Ensure the first campaign is Reddit-related
+        // Find a Reddit-related option
         const redditOptions = formattedRecommendations.filter(rec => 
           rec.platform.toLowerCase().includes('reddit') || 
           rec.title.toLowerCase().includes('reddit')
@@ -91,18 +91,56 @@ const Dashboard = () => {
           !rec.title.toLowerCase().includes('reddit')
         );
         
-        // If we have Reddit options, ensure one is first
+        // Create final recommendations array with Reddit first if available
         if (redditOptions.length > 0) {
           formattedRecommendations = [
             redditOptions[0],
             ...nonRedditOptions
           ].slice(0, 3);
         } else {
-          // If no Reddit options, just take the first 3
-          formattedRecommendations = formattedRecommendations.slice(0, 3);
+          // If no Reddit options, add a placeholder Reddit recommendation
+          const genericRedditRecommendation = {
+            id: 'reddit-placeholder',
+            title: 'Reddit Community Engagement',
+            description: 'Engage with relevant Reddit communities to build authority and drive traffic to your website.',
+            platform: 'Reddit',
+            insights: [
+              'Reddit users value authentic participation',
+              'Provide value before promoting content',
+              'Focus on niche subreddits related to your industry'
+            ],
+            roi: 'Medium',
+            difficulty: 'Medium',
+            budget: '$0-100',
+            icon: <MessageCircleMore className="h-6 w-6" />
+          };
+          
+          formattedRecommendations = [
+            genericRedditRecommendation,
+            ...formattedRecommendations.slice(0, 2)
+          ];
         }
         
         setCampaignOptions(formattedRecommendations);
+      } else {
+        // If no recommendations at all, add a placeholder Reddit recommendation
+        const genericRedditRecommendation = {
+          id: 'reddit-placeholder',
+          title: 'Reddit Community Engagement',
+          description: 'Engage with relevant Reddit communities to build authority and drive traffic to your website.',
+          platform: 'Reddit',
+          insights: [
+            'Reddit users value authentic participation',
+            'Provide value before promoting content',
+            'Focus on niche subreddits related to your industry'
+          ],
+          roi: 'Medium',
+          difficulty: 'Medium',
+          budget: '$0-100',
+          icon: <MessageCircleMore className="h-6 w-6" />
+        };
+        
+        setCampaignOptions([genericRedditRecommendation]);
       }
     } catch (error) {
       console.error('Error fetching campaign recommendations:', error);
