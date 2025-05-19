@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +11,8 @@ interface SubredditRecommendation {
   id: string;
   subreddit: string;
   reason?: string;
+  postTitle?: string;
+  postContent?: string;
 }
 
 interface SubredditRecommendationsProps {
@@ -44,8 +45,10 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
         }
         
         if (existingRecommendations && existingRecommendations.length > 0) {
+          console.log('Found existing subreddit recommendations:', existingRecommendations);
           setRecommendations(existingRecommendations);
         } else {
+          console.log('No existing recommendations, getting new ones from OpenAI');
           // If no existing recommendations, get new ones from OpenAI
           const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
             body: { websiteUrl }
@@ -55,7 +58,9 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
             throw new Error(analysisError.message);
           }
           
-          if (analysisData && analysisData.recommendations) {
+          if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
+            console.log('Received recommendations from edge function:', analysisData.recommendations);
+            
             // Store recommendations in Supabase
             const recommendationsToStore = analysisData.recommendations.map((rec: any) => ({
               website_url: websiteUrl,
@@ -63,24 +68,46 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
               reason: rec.reason
             }));
             
+            console.log('Storing recommendations in database:', recommendationsToStore);
+            
             const { error: insertError } = await supabase
               .from('subreddit_recommendations')
               .insert(recommendationsToStore);
               
             if (insertError) {
               console.error('Error storing recommendations:', insertError);
+              toast({
+                title: 'Warning',
+                description: 'Generated recommendations but failed to save them',
+                variant: 'warning',
+              });
             }
             
             // Get the stored recommendations with their IDs
-            const { data: storedRecommendations } = await supabase
+            const { data: storedRecommendations, error: storedError } = await supabase
               .from('subreddit_recommendations')
               .select('*')
               .eq('website_url', websiteUrl)
               .limit(5);
               
-            if (storedRecommendations) {
-              setRecommendations(storedRecommendations);
+            if (storedError) {
+              console.error('Error fetching stored recommendations:', storedError);
             }
+            
+            if (storedRecommendations && storedRecommendations.length > 0) {
+              setRecommendations(storedRecommendations);
+            } else {
+              // If we couldn't get stored recommendations, use the ones from the API directly
+              setRecommendations(analysisData.recommendations.map((rec: any) => ({
+                id: crypto.randomUUID(),
+                subreddit: rec.name,
+                reason: rec.reason,
+                postTitle: rec.postTitle,
+                postContent: rec.postContent
+              })));
+            }
+          } else {
+            console.log('No recommendations returned from edge function');
           }
         }
       } catch (err: any) {
