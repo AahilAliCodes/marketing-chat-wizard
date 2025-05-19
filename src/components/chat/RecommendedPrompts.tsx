@@ -58,7 +58,7 @@ const RecommendedPrompts: React.FC<RecommendedPromptsProps> = ({
   return (
     <div className="mb-3">
       <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-3 w-3 text-marketing-purple" />
+        <Sparkles className="h-3 w-3 text-red-600" />
         <h4 className="text-xs font-medium text-gray-700">Quick Prompts</h4>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-2">
@@ -66,7 +66,7 @@ const RecommendedPrompts: React.FC<RecommendedPromptsProps> = ({
           <button
             key={index}
             onClick={() => onSelectPrompt(formatPrompt(prompt.text))}
-            className="flex-shrink-0 text-left p-2 rounded-md border border-gray-200 hover:border-marketing-purple/50 hover:bg-marketing-purple/5 transition-colors"
+            className="flex-shrink-0 text-left p-2 rounded-md border border-gray-200 hover:border-red-400 hover:bg-red-50 transition-colors"
           >
             <p className="text-xs font-medium text-gray-900 line-clamp-1">{formatPrompt(prompt.text)}</p>
           </button>

@@ -14,10 +14,10 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
     
     if (isMarketingPlan) {
       return (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+        <div className="bg-gradient-to-r from-red-50 to-blue-50 p-4 rounded-lg border border-red-200">
           {/* Extract title if it exists */}
           {text.match(/\*\*(.*?)\*\*/)?.[1] && (
-            <h3 className="text-xl font-semibold mb-4 text-center bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+            <h3 className="text-xl font-semibold mb-4 text-center bg-gradient-to-r from-red-800 to-red-600 bg-clip-text text-transparent">
               {text.match(/\*\*(.*?)\*\*/)?.[1]}
             </h3>
           )}
@@ -33,11 +33,11 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
                 
                 return (
                   <div key={lineIndex} className="flex gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-semibold">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-semibold">
                       {number}
                     </div>
                     <div className="flex-grow">
-                      <div className="font-medium text-purple-800">{title}</div>
+                      <div className="font-medium text-red-600">{title}</div>
                       {content && <div className="text-gray-700 mt-1">{content}</div>}
                     </div>
                   </div>
@@ -48,7 +48,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
               if (line.trim().startsWith('-')) {
                 return (
                   <div key={lineIndex} className="flex items-start gap-3 ml-8">
-                    <div className="w-2 h-2 rounded-full bg-purple-400 mt-2 flex-shrink-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-red-400 mt-2 flex-shrink-0"></div>
                     <div className="text-gray-700">
                       {line.replace(/^-\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                     </div>
@@ -62,8 +62,8 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
                 const sectionContent = line.includes(':') ? line.split(':')[1]?.trim() : '';
                 
                 return (
-                  <div key={lineIndex} className="mt-4 border-t border-purple-100 pt-3">
-                    <div className="font-medium text-purple-800">{sectionTitle}:</div>
+                  <div key={lineIndex} className="mt-4 border-t border-red-100 pt-3">
+                    <div className="font-medium text-red-600">{sectionTitle}:</div>
                     {sectionContent && <div className="text-gray-700 mt-1">{sectionContent}</div>}
                   </div>
                 );
@@ -97,16 +97,16 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
         
         return (
           <div key={index} className="mb-6">
-            <h3 className="text-lg font-semibold mb-3 bg-gradient-to-r from-purple-800 to-purple-600 bg-clip-text text-transparent">
+            <h3 className="text-lg font-semibold mb-3 bg-gradient-to-r from-red-800 to-red-600 bg-clip-text text-transparent">
               {headerText}
             </h3>
-            <div className="pl-4 border-l-2 border-purple-200">
+            <div className="pl-4 border-l-2 border-red-200">
               {content.join('\n').split('\n').map((line, lineIndex) => {
                 // Handle bullet points (lines starting with -)
                 if (line.trim().startsWith('-')) {
                   return (
                     <div key={lineIndex} className="flex items-start gap-2 mb-3">
-                      <span className="text-purple-800 mt-1.5">•</span>
+                      <span className="text-red-600 mt-1.5">•</span>
                       <div className="text-gray-700">
                         {line.replace(/^-\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                       </div>
@@ -117,7 +117,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
                 if (/^\d+\./.test(line.trim())) {
                   return (
                     <div key={lineIndex} className="flex items-start gap-2 mb-3">
-                      <span className="text-purple-800 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
+                      <span className="text-red-600 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
                       <div className="text-gray-700">
                         {line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                       </div>
@@ -145,7 +145,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
             if (line.trim().startsWith('-')) {
               return (
                 <div key={lineIndex} className="flex items-start gap-2 mb-3">
-                  <span className="text-purple-800 mt-1.5">•</span>
+                  <span className="text-red-600 mt-1.5">•</span>
                   <div className="text-gray-700">
                     {line.replace(/^-\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                   </div>
@@ -156,7 +156,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
             if (/^\d+\./.test(line.trim())) {
               return (
                 <div key={lineIndex} className="flex items-start gap-2 mb-3">
-                  <span className="text-purple-800 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
+                  <span className="text-red-600 mt-1.5 min-w-[1.5rem]">{line.match(/^\d+/)?.[0]}.</span>
                   <div className="text-gray-700">
                     {line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '')}
                   </div>
