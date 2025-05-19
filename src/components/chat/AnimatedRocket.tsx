@@ -13,4 +13,4 @@ const AnimatedRocket: React.FC = () => {
   );
 };
 
-export default AnimatedRocket;
+export { AnimatedRocket };
