@@ -141,7 +141,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   }
   
   return (
-    <Card className="mt-6 border-marketing-purple/30">
+    <Card id="subreddit-recommendations" className="mt-6 border-marketing-purple/30">
       <CardHeader className="bg-marketing-purple/5">
         <CardTitle className="text-xl">Recommended Subreddits</CardTitle>
       </CardHeader>

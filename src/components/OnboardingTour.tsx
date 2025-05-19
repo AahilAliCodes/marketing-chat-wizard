@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -22,6 +23,11 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, websiteUrl 
     {
       target: 'campaign-recommendations',
       content: 'Here are the three most relevant channels we\'ve identified for your business. Click on one to generate a marketing plan.',
+      position: 'top'
+    },
+    {
+      target: 'subreddit-recommendations',
+      content: 'These subreddits are perfect places to engage with your target audience. Click on any subreddit to open it in a new tab.',
       position: 'top'
     },
     {

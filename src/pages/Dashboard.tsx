@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -9,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 import SubredditRecommendations from '@/components/SubredditRecommendations';
 
@@ -34,6 +35,7 @@ const Dashboard = () => {
   const [activeItem, setActiveItem] = useState<string>('home');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
@@ -59,14 +61,14 @@ const Dashboard = () => {
         .from('campaign_recommendations')
         .select('*')
         .eq('website_url', url)
-        .limit(3); // Limit to 3 most relevant recommendations
+        .limit(10); // Fetch more than we need to ensure we have some Reddit options
 
       if (error) {
         throw error;
       }
 
       if (recommendations) {
-        const formattedRecommendations = recommendations.map(rec => ({
+        let formattedRecommendations = recommendations.map(rec => ({
           id: rec.id,
           title: rec.title,
           description: rec.description,
@@ -77,6 +79,29 @@ const Dashboard = () => {
           budget: rec.budget,
           icon: getPlatformIcon(rec.platform)
         }));
+        
+        // Ensure the first campaign is Reddit-related
+        const redditOptions = formattedRecommendations.filter(rec => 
+          rec.platform.toLowerCase().includes('reddit') || 
+          rec.title.toLowerCase().includes('reddit')
+        );
+        
+        const nonRedditOptions = formattedRecommendations.filter(rec => 
+          !rec.platform.toLowerCase().includes('reddit') && 
+          !rec.title.toLowerCase().includes('reddit')
+        );
+        
+        // If we have Reddit options, ensure one is first
+        if (redditOptions.length > 0) {
+          formattedRecommendations = [
+            redditOptions[0],
+            ...nonRedditOptions
+          ].slice(0, 3);
+        } else {
+          // If no Reddit options, just take the first 3
+          formattedRecommendations = formattedRecommendations.slice(0, 3);
+        }
+        
         setCampaignOptions(formattedRecommendations);
       }
     } catch (error) {
@@ -86,6 +111,52 @@ const Dashboard = () => {
         description: 'Failed to fetch campaign recommendations',
         variant: 'destructive',
       });
+    }
+  };
+  
+  // Function to regenerate recommendations
+  const regenerateRecommendations = async () => {
+    if (!websiteUrl) {
+      toast({
+        title: 'Error',
+        description: 'No website URL available for analysis',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsRegenerating(true);
+    toast({
+      title: 'Generating',
+      description: 'Creating new campaign recommendations...',
+    });
+    
+    try {
+      // Call the edge function to reanalyze
+      const { data, error } = await supabase.functions.invoke('analyze-website', {
+        body: { url: websiteUrl, force: true },
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      // Fetch the newly generated recommendations
+      await fetchCampaignRecommendations(websiteUrl);
+      
+      toast({
+        title: 'Success',
+        description: 'New campaign recommendations have been generated',
+      });
+    } catch (error: any) {
+      console.error('Regeneration error:', error);
+      toast({
+        title: 'Generation Failed',
+        description: error.message || 'Failed to create new recommendations',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -242,7 +313,16 @@ const Dashboard = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-gray-600 mt-2 md:mt-0">Website: {websiteUrl}</p>
+              <Button
+                variant="outline"
+                onClick={regenerateRecommendations}
+                disabled={isRegenerating}
+                className="whitespace-nowrap flex gap-2 items-center"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                Generate new recommendations
+              </Button>
+              <p className="text-gray-600 mt-2 md:mt-0 ml-4">Website: {websiteUrl}</p>
             </div>
           </div>
           
