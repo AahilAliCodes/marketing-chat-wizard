@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Share2, Save, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,20 @@ interface ShareChatProps {
 const ShareChat: React.FC<ShareChatProps> = ({ websiteUrl, campaignType, chatHistory }) => {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copyingLink, setCopyingLink] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+
+  // Reset the button state after timeout
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => {
+        setCopied(false);
+        setShareLink(null);
+      }, 5000); // Reset after 5 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [copied]);
 
   const handleShareChat = async () => {
     try {
@@ -60,6 +73,9 @@ const ShareChat: React.FC<ShareChatProps> = ({ websiteUrl, campaignType, chatHis
     setCopyingLink(true);
     try {
       await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      setCopyingLink(false);
+      
       toast({
         title: "Link copied",
         description: "Share link copied to clipboard",
@@ -71,7 +87,6 @@ const ShareChat: React.FC<ShareChatProps> = ({ websiteUrl, campaignType, chatHis
         title: "Copy failed",
         description: "Please try copying the link manually"
       });
-    } finally {
       setCopyingLink(false);
     }
   };
@@ -91,7 +106,7 @@ const ShareChat: React.FC<ShareChatProps> = ({ websiteUrl, campaignType, chatHis
         Sign in to save
       </Button>
       
-      {shareLink ? (
+      {shareLink && !copied ? (
         <div className="flex items-center gap-2">
           <div className="px-2 py-1 text-xs bg-gray-100 border border-gray-300 rounded-md truncate max-w-[150px]">
             {shareLink}
@@ -115,11 +130,21 @@ const ShareChat: React.FC<ShareChatProps> = ({ websiteUrl, campaignType, chatHis
         <Button
           variant="outline"
           size="sm"
-          className="text-sm text-gray-600 hover:text-purple-800 hover:border-purple-800"
+          className={`text-sm ${copied ? 'text-green-600 border-green-600' : 'text-gray-600 hover:text-purple-800 hover:border-purple-800'}`}
           onClick={handleShareChat}
+          disabled={copied}
         >
-          <Share2 className="h-4 w-4 mr-2" />
-          Share chat
+          {copied ? (
+            <>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share chat
+            </>
+          )}
         </Button>
       )}
     </div>
