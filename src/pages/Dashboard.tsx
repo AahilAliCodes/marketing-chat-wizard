@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -12,6 +11,7 @@ import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
+import SubredditRecommendations from '@/components/SubredditRecommendations';
 
 interface LocationState {
   isAnalyzing?: boolean;
@@ -247,55 +247,64 @@ const Dashboard = () => {
           </div>
           
           {!activeCampaign ? (
-            <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
-              {campaignOptions.length > 0 ? (
-                campaignOptions.map((campaign) => (
-                  <div
-                    key={campaign.id}
-                    className="relative flex flex-col border-2 rounded-2xl shadow-[0_0_16px_0_rgba(128,90,213,0.25)] hover:shadow-[0_0_32px_4px_rgba(128,90,213,0.45)] transition-all overflow-hidden bg-gradient-to-br from-white via-purple-50 to-purple-100 border-marketing-purple/30"
-                  >
-                    <div 
-                      onClick={() => setActiveCampaign(campaign.id)}
-                      className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/10 transition-all cursor-pointer"
+            <div className="overflow-y-auto pb-16">
+              <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
+                {campaignOptions.length > 0 ? (
+                  campaignOptions.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="relative flex flex-col border-2 rounded-2xl shadow-[0_0_16px_0_rgba(128,90,213,0.25)] hover:shadow-[0_0_32px_4px_rgba(128,90,213,0.45)] transition-all overflow-hidden bg-gradient-to-br from-white via-purple-50 to-purple-100 border-marketing-purple/30"
                     >
-                      <div className="bg-marketing-purple/10 p-4 rounded-full mb-6 shadow-[0_0_12px_0_rgba(128,90,213,0.15)]">
-                        {campaign.icon}
+                      <div 
+                        onClick={() => setActiveCampaign(campaign.id)}
+                        className="p-8 flex flex-col items-center text-center hover:border-marketing-purple hover:bg-marketing-purple/10 transition-all cursor-pointer"
+                      >
+                        <div className="bg-marketing-purple/10 p-4 rounded-full mb-6 shadow-[0_0_12px_0_rgba(128,90,213,0.15)]">
+                          {campaign.icon}
+                        </div>
+                        <h3 className="text-xl font-semibold mb-3 text-marketing-purple drop-shadow">{campaign.title}</h3>
+                        <div className="text-sm text-gray-500 mb-4">
+                          <span className="font-medium">Platform:</span> {campaign.platform}
+                        </div>
+                        <div className="text-sm text-gray-600 w-full mb-4">{campaign.description}</div>
                       </div>
-                      <h3 className="text-xl font-semibold mb-3 text-marketing-purple drop-shadow">{campaign.title}</h3>
-                      <div className="text-sm text-gray-500 mb-4">
-                        <span className="font-medium">Platform:</span> {campaign.platform}
-                      </div>
-                      <div className="text-sm text-gray-600 w-full mb-4">{campaign.description}</div>
-                    </div>
-                    
-                    <div className="px-8 pb-6">
-                      <div className="text-sm text-gray-500 pt-2 border-t mt-2">
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <span className="font-medium">ROI:</span> {campaign.roi}
+                      
+                      <div className="px-8 pb-6">
+                        <div className="text-sm text-gray-500 pt-2 border-t mt-2">
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <span className="font-medium">ROI:</span> {campaign.roi}
+                            </div>
+                            <div>
+                              <span className="font-medium">Difficulty:</span> {campaign.difficulty}
+                            </div>
+                            <div>
+                              <span className="font-medium">Budget:</span> {campaign.budget}
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-medium">Difficulty:</span> {campaign.difficulty}
-                          </div>
-                          <div>
-                            <span className="font-medium">Budget:</span> {campaign.budget}
+                          <div className="mt-4">
+                            <span className="font-medium">Key Insights:</span>
+                            <ul className="list-disc list-inside mt-2">
+                              {campaign.insights.map((insight, index) => (
+                                <li key={index} className="text-gray-700">{insight}</li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
-                        <div className="mt-4">
-                          <span className="font-medium">Key Insights:</span>
-                          <ul className="list-disc list-inside mt-2">
-                            {campaign.insights.map((insight, index) => (
-                              <li key={index} className="text-gray-700">{insight}</li>
-                            ))}
-                          </ul>
-                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="col-span-3 text-center py-12">
+                    <p className="text-gray-500">No campaign recommendations available yet.</p>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-3 text-center py-12">
-                  <p className="text-gray-500">No campaign recommendations available yet.</p>
+                )}
+              </div>
+              
+              {/* Subreddit Recommendations */}
+              {websiteUrl && (
+                <div className="px-4 md:px-12 pb-8">
+                  <SubredditRecommendations websiteUrl={websiteUrl} />
                 </div>
               )}
             </div>
