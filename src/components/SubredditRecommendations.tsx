@@ -79,7 +79,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
               toast({
                 title: 'Warning',
                 description: 'Generated recommendations but failed to save them',
-                variant: 'warning',
+                variant: 'default', // Changed from 'warning' to 'default' as only 'default' or 'destructive' are valid variants
               });
             }
             
