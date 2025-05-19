@@ -36,11 +36,6 @@ export const useChatWithAI = () => {
       const response = data as AIChatResponse;
       setAiResponse(response.response);
       
-      // If there are subreddit recommendations, store them
-      if (response.recommendations && response.recommendations.length > 0) {
-        await storeSubredditRecommendations(websiteUrl, response.recommendations);
-      }
-      
       return response;
     } catch (err: any) {
       const errorMessage = err.message || 'Error communicating with AI';
@@ -56,47 +51,6 @@ export const useChatWithAI = () => {
       return null;
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const storeSubredditRecommendations = async (websiteUrl: string, recommendations: any[]) => {
-    try {
-      // First check if we already have recommendations for this website
-      const { data: existingRecommendations } = await supabase
-        .from('subreddit_recommendations')
-        .select('subreddit')
-        .eq('website_url', websiteUrl);
-      
-      // If we have existing recommendations, don't store again
-      if (existingRecommendations && existingRecommendations.length > 0) {
-        console.log('Subreddit recommendations already exist for this website');
-        return;
-      }
-      
-      // Format the recommendations to match the database schema
-      const recommendationsToStore = recommendations.map(rec => ({
-        website_url: websiteUrl,
-        subreddit: rec.name,
-        reason: rec.reason
-      }));
-      
-      // Store the recommendations
-      const { error } = await supabase
-        .from('subreddit_recommendations')
-        .insert(recommendationsToStore);
-      
-      if (error) {
-        console.error('Error storing subreddit recommendations:', error);
-        toast({
-          title: 'Warning',
-          description: 'Generated recommendations but failed to save them to the database',
-          variant: 'default',
-        });
-      } else {
-        console.log('Successfully stored subreddit recommendations');
-      }
-    } catch (err) {
-      console.error('Error in storeSubredditRecommendations:', err);
     }
   };
 

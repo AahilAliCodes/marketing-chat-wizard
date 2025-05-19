@@ -34,30 +34,13 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     setError(null);
     
     try {
-      // Only check existing recommendations if we're not forcing regeneration
-      if (!forceRegenerate) {
-        // First check if we have recommendations for this website
-        const { data: existingRecommendations, error: fetchError } = await supabase
-          .from('subreddit_recommendations')
-          .select('*')
-          .eq('website_url', websiteUrl)
-          .limit(5);
-            
-        if (fetchError) {
-          throw new Error(fetchError.message);
-        }
-        
-        if (existingRecommendations && existingRecommendations.length > 0) {
-          console.log('Found existing subreddit recommendations:', existingRecommendations);
-          setRecommendations(existingRecommendations);
-          return;
-        }
-      }
-      
-      console.log('No existing recommendations or regenerating, getting new ones from OpenAI');
-      // Get new ones from OpenAI
+      // Call the edge function - it will check for existing recommendations
+      // and only generate new ones if needed (or if forceRegenerate is true)
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
-        body: { websiteUrl }
+        body: { 
+          websiteUrl,
+          forceRegenerate // Pass this flag to the edge function
+        }
       });
       
       if (analysisError) {
@@ -65,75 +48,15 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       }
       
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        console.log('Received recommendations from edge function:', analysisData.recommendations);
+        setRecommendations(analysisData.recommendations);
         
-        // If regenerating, delete existing recommendations first
         if (forceRegenerate) {
-          const { error: deleteError } = await supabase
-            .from('subreddit_recommendations')
-            .delete()
-            .eq('website_url', websiteUrl);
-            
-          if (deleteError) {
-            console.error('Error deleting existing recommendations:', deleteError);
-          }
-        }
-        
-        // Store recommendations in Supabase
-        const recommendationsToStore = analysisData.recommendations.map((rec: any) => ({
-          website_url: websiteUrl,
-          subreddit: rec.name,
-          reason: rec.reason,
-          postTitle: rec.postTitle,
-          postContent: rec.postContent
-        }));
-        
-        console.log('Storing recommendations in database:', recommendationsToStore);
-        
-        const { error: insertError } = await supabase
-          .from('subreddit_recommendations')
-          .insert(recommendationsToStore);
-          
-        if (insertError) {
-          console.error('Error storing recommendations:', insertError);
           toast({
-            title: 'Warning',
-            description: 'Generated recommendations but failed to save them',
-            variant: 'default',
+            title: 'Success',
+            description: 'New subreddit recommendations have been generated',
           });
         }
-        
-        // Get the stored recommendations with their IDs
-        const { data: storedRecommendations, error: storedError } = await supabase
-          .from('subreddit_recommendations')
-          .select('*')
-          .eq('website_url', websiteUrl)
-          .limit(5);
-          
-        if (storedError) {
-          console.error('Error fetching stored recommendations:', storedError);
-        }
-        
-        if (storedRecommendations && storedRecommendations.length > 0) {
-          setRecommendations(storedRecommendations);
-          if (forceRegenerate) {
-            toast({
-              title: 'Success',
-              description: 'New subreddit recommendations have been generated',
-            });
-          }
-        } else {
-          // If we couldn't get stored recommendations, use the ones from the API directly
-          setRecommendations(analysisData.recommendations.map((rec: any) => ({
-            id: crypto.randomUUID(),
-            subreddit: rec.name,
-            reason: rec.reason,
-            postTitle: rec.postTitle,
-            postContent: rec.postContent
-          })));
-        }
       } else {
-        console.log('No recommendations returned from edge function');
         throw new Error('No recommendations could be generated');
       }
     } catch (err: any) {
@@ -151,7 +74,9 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   };
   
   useEffect(() => {
-    fetchSubreddits();
+    if (websiteUrl) {
+      fetchSubreddits();
+    }
   }, [websiteUrl]);
   
   const handleSubredditClick = (subreddit: string) => {
