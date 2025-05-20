@@ -235,6 +235,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_actions: {
+        Row: {
+          action_type: string
+          chat_data: Json | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          website_url: string | null
+        }
+        Insert: {
+          action_type: string
+          chat_data?: Json | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          website_url?: string | null
+        }
+        Update: {
+          action_type?: string
+          chat_data?: Json | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       user_chat_channels: {
         Row: {
           created_at: string

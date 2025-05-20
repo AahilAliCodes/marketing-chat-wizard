@@ -7,7 +7,7 @@ import { ChatMessage as ChatMessageType } from './chat/types';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessage from './chat/ChatMessage';
 import ChatInputForm from './chat/ChatInputForm';
-import ShareChat from './chat/ShareChat';
+import UserActionForm from './chat/UserActionForm';
 import AnimatedRocket from './chat/AnimatedRocket';
 
 interface AIChatInterfaceProps {
@@ -77,6 +77,10 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     });
   };
 
+  const handleActionSuccess = (actionType: string, data?: any) => {
+    console.log(`Action ${actionType} completed successfully`, data);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <ChatHeader websiteUrl={websiteUrl} campaignType={campaignType} />
@@ -107,10 +111,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           websiteUrl={websiteUrl}
           campaignType={campaignType}
         />
-        <ShareChat
+        <UserActionForm
           websiteUrl={websiteUrl}
           campaignType={campaignType}
           chatHistory={chatHistory}
+          onSuccess={handleActionSuccess}
         />
       </div>
     </div>

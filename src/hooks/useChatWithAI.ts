@@ -21,6 +21,13 @@ export const useChatWithAI = () => {
     setAiResponse(null);
 
     try {
+      // Also save the user message to Supabase for analytics
+      await supabase.from('user_chat_history').insert({
+        website_url: websiteUrl,
+        user_prompt: userMessage,
+        ai_response: '', // Will be updated after we get the response
+      });
+      
       const { data, error } = await supabase.functions.invoke('chat-with-recommendations', {
         body: { websiteUrl, userMessage, campaignType },
       });
@@ -35,6 +42,24 @@ export const useChatWithAI = () => {
 
       const response = data as AIChatResponse;
       setAiResponse(response.response);
+      
+      // Update the AI response in the chat history
+      if (response.response) {
+        const { data: chatHistoryData } = await supabase
+          .from('user_chat_history')
+          .select('id')
+          .eq('user_prompt', userMessage)
+          .eq('website_url', websiteUrl)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (chatHistoryData && chatHistoryData.length > 0) {
+          await supabase
+            .from('user_chat_history')
+            .update({ ai_response: response.response })
+            .eq('id', chatHistoryData[0].id);
+        }
+      }
       
       return response;
     } catch (err: any) {
