@@ -148,16 +148,34 @@ const SharedChat: React.FC = () => {
 
         if (error) throw error;
         
-        // Find the shared chat by matching part of the chat_data (look for the message ID that contains our chat ID)
+        // Find the shared chat by matching part of the chat_data
         const matchingChat = data?.find(record => {
-          // Check if this record contains a message with our chat ID
-          return record.chat_data && Array.isArray(record.chat_data) && 
-            record.chat_data.some((msg: any) => msg.id === chatId || msg.id.includes(chatId));
+          // Make sure chat_data exists and is an array or can be processed as one
+          if (!record.chat_data) return false;
+          
+          // If chat_data is a string, try to parse it
+          const chatDataArray = Array.isArray(record.chat_data) 
+            ? record.chat_data 
+            : (typeof record.chat_data === 'string' ? JSON.parse(record.chat_data) : null);
+          
+          // If we can't get an array, skip this record
+          if (!chatDataArray || !Array.isArray(chatDataArray)) return false;
+          
+          // Check if any message in the array contains our chat ID
+          return chatDataArray.some((msg: any) => 
+            msg.id === chatId || (typeof msg.id === 'string' && msg.id.includes(chatId))
+          );
         });
 
         if (matchingChat) {
-          // Process the chat data
-          const chatMessages = matchingChat.chat_data.map((msg: any) => ({
+          // Process the chat data, ensuring it's in array format
+          const chatDataArray = Array.isArray(matchingChat.chat_data) 
+            ? matchingChat.chat_data 
+            : (typeof matchingChat.chat_data === 'string' 
+                ? JSON.parse(matchingChat.chat_data) 
+                : []);
+          
+          const chatMessages = chatDataArray.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }));
