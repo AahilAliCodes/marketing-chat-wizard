@@ -68,9 +68,9 @@ const Home = () => {
           </div>
           <span className="text-xl font-bold">BLASTari</span>
         </div>
-        <a href="/auth" className="text-marketing-purple font-medium">
+        {/* <a href="/auth" className="text-marketing-purple font-medium">
           Account
-        </a>
+        </a> */}
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
