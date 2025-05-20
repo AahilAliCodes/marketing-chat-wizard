@@ -73,7 +73,7 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
       
       // Process based on action type
       if (actionType === 'share') {
-        // Save chat data in localStorage for now
+        // Save chat data in localStorage as a fallback mechanism
         const shareData = {
           websiteUrl,
           campaignType,

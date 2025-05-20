@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatMessage {
   id: string;
@@ -108,38 +109,76 @@ const SharedChat: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!chatId) {
-      setError("Invalid chat ID");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Attempt to retrieve the shared chat data from localStorage
-      const storedData = localStorage.getItem(`shared-chat-${chatId}`);
-      
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        
-        // Convert string timestamps back to Date objects
-        const processedMessages = parsedData.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }));
-        
-        setChatData({
-          ...parsedData,
-          messages: processedMessages
-        });
-      } else {
-        setError("Chat not found");
+    const fetchSharedChat = async () => {
+      if (!chatId) {
+        setError("Invalid chat ID");
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("Error loading shared chat:", err);
-      setError("Failed to load chat data");
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        // Try to load from localStorage first as a fallback
+        const storedData = localStorage.getItem(`shared-chat-${chatId}`);
+        
+        // If found in localStorage, use it
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          
+          // Convert string timestamps back to Date objects
+          const processedMessages = parsedData.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          
+          setChatData({
+            ...parsedData,
+            messages: processedMessages
+          });
+          setLoading(false);
+          return;
+        }
+
+        // If not in localStorage, try to fetch from Supabase
+        const { data, error } = await supabase
+          .from('user_actions')
+          .select('*')
+          .eq('action_type', 'share')
+          .filter('chat_data', 'neq', null)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        // Find the shared chat by matching part of the chat_data (look for the message ID that contains our chat ID)
+        const matchingChat = data?.find(record => {
+          // Check if this record contains a message with our chat ID
+          return record.chat_data && Array.isArray(record.chat_data) && 
+            record.chat_data.some((msg: any) => msg.id === chatId || msg.id.includes(chatId));
+        });
+
+        if (matchingChat) {
+          // Process the chat data
+          const chatMessages = matchingChat.chat_data.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          
+          setChatData({
+            websiteUrl: matchingChat.website_url || 'Unknown website',
+            campaignType: undefined, // Since we don't store this separately
+            messages: chatMessages
+          });
+        } else {
+          setError("Chat not found");
+        }
+      } catch (err) {
+        console.error("Error loading shared chat:", err);
+        setError("Failed to load chat data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSharedChat();
   }, [chatId]);
 
   if (loading) {
