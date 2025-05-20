@@ -8,6 +8,7 @@ import { Share2, User, Save, Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ChatMessage } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface UserActionFormProps {
   websiteUrl: string;
@@ -68,7 +69,7 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
 
     try {
       // Create a unique ID for sharing or saving
-      const shareId = Math.random().toString(36).substring(2, 10);
+      const shareId = uuidv4().slice(0, 8);
       
       // Process based on action type
       if (actionType === 'share') {
@@ -88,14 +89,21 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
         setShareLink(shareUrl);
       }
       
-      // Save user action to Supabase
+      // Save user action to Supabase - convert chatHistory to a regular object for storage
+      const chatDataForStorage = chatHistory.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      }));
+      
       const { error } = await supabase.from('user_actions').insert({
         email: formState.email,
         first_name: formState.firstName,
         last_name: formState.lastName,
         action_type: actionType,
         website_url: websiteUrl,
-        chat_data: actionType === 'share' ? chatHistory : null
+        chat_data: actionType === 'share' ? chatDataForStorage : null
       });
 
       if (error) throw error;
