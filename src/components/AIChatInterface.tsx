@@ -13,25 +13,38 @@ import AnimatedRocket from './chat/AnimatedRocket';
 interface AIChatInterfaceProps {
   websiteUrl: string;
   campaignType?: string;
+  channelId?: string;
 }
 
-const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignType }) => {
+const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignType, channelId }) => {
   const [chatHistory, setChatHistory] = useState<ChatMessageType[]>([]);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Generate welcome message based on campaign type
-    let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
-    
-    setChatHistory([{
-      id: 'welcome',
-      role: 'BLASTari',
-      content: welcomeMessage,
-      timestamp: new Date()
-    }]);
-  }, [websiteUrl, campaignType]);
+    // If channelId is provided, load the conversation from that channel
+    if (channelId) {
+      // Load messages for this specific channel
+      // For now, we'll show a welcome message indicating this is a saved conversation
+      setChatHistory([{
+        id: 'saved-welcome',
+        role: 'BLASTari',
+        content: `Welcome back to your saved conversation! I'm ready to continue helping you with your marketing campaign for ${websiteUrl}. 🚀`,
+        timestamp: new Date()
+      }]);
+    } else {
+      // Generate welcome message based on campaign type
+      let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+      
+      setChatHistory([{
+        id: 'welcome',
+        role: 'BLASTari',
+        content: welcomeMessage,
+        timestamp: new Date()
+      }]);
+    }
+  }, [websiteUrl, campaignType, channelId]);
 
   const handleSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -83,7 +96,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader websiteUrl={websiteUrl} campaignType={campaignType} />
+      <ChatHeader 
+        websiteUrl={websiteUrl} 
+        campaignType={campaignType}
+        isChannelConversation={!!channelId}
+      />
       
       <ScrollArea className="flex-1 pr-4 mb-6 overflow-y-auto relative">
         <div className="space-y-4">
