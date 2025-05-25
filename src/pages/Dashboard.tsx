@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '@/utils/sessionManager';
 import AIChatInterface from '@/components/AIChatInterface';
-import SavedConversations from '@/components/SavedConversations';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw, MessageCircleMore } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -360,7 +359,7 @@ const Dashboard = () => {
     navigate('/reddit-generator');
   };
 
-  // Handle selecting a conversation
+  // Handle selecting a conversation (removed since SavedConversations is hidden)
   const handleSelectConversation = (channelId: string) => {
     setSelectedConversation(channelId);
   };
@@ -465,12 +464,9 @@ const Dashboard = () => {
           
           {!activeCampaign && !selectedConversation ? (
             <div className="overflow-y-auto pb-16">
-              {/* Saved Conversations Section */}
-              <div className="px-4 md:px-12 pt-6">
-                <SavedConversations onSelectConversation={handleSelectConversation} />
-              </div>
+              {/* Removed SavedConversations component */}
               
-              <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
+              <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12 pt-6">
                 {campaignOptions.length > 0 ? (
                   campaignOptions.map((campaign) => (
                     <div

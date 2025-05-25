@@ -62,6 +62,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     const chatKey = getChatKey();
     
     const initializeChat = async () => {
+      // Clear chats for other websites when initializing a new chat
+      if (!channelId) {
+        SessionManager.clearOtherWebsiteChats(websiteUrl);
+      }
+
       if (channelId) {
         // Handle different types of channel IDs
         if (channelId.startsWith('session_')) {
@@ -112,7 +117,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
         // Regular conversation - try to load existing or create new
         const savedChat = SessionManager.getSessionData(chatKey);
         
-        if (savedChat && savedChat.messages && savedChat.messages.length > 0) {
+        if (savedChat && savedChat.messages && savedChat.messages.length > 0 && savedChat.websiteUrl === websiteUrl) {
           const restoredMessages = savedChat.messages.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)

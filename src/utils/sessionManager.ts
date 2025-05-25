@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 export class SessionManager {
@@ -46,5 +45,23 @@ export class SessionManager {
     const newSessionId = uuidv4();
     localStorage.setItem(this.SESSION_KEY, newSessionId);
     return newSessionId;
+  }
+
+  // Clear chat data for all websites except the specified one
+  static clearOtherWebsiteChats(currentWebsiteUrl: string): void {
+    const sessionId = this.getSessionId();
+    Object.keys(localStorage).forEach(storageKey => {
+      if (storageKey.startsWith(`${this.SESSION_DATA_KEY}_${sessionId}_chat_`)) {
+        try {
+          const chatData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+          if (chatData.websiteUrl && chatData.websiteUrl !== currentWebsiteUrl) {
+            localStorage.removeItem(storageKey);
+          }
+        } catch (error) {
+          // If we can't parse the data, remove it to keep storage clean
+          localStorage.removeItem(storageKey);
+        }
+      }
+    });
   }
 }
