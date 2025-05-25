@@ -8,6 +8,7 @@ import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ChatMessage } from './types';
+import emailjs from '@emailjs/browser';
 
 interface UserActionFormProps {
   websiteUrl: string;
@@ -46,6 +47,30 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
     setIsDialogOpen(true);
   };
 
+  const sendEmailJS = async (formData: FormState) => {
+    try {
+      const templateParams = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        website_url: websiteUrl,
+        to_name: 'BLASTari Team',
+      };
+
+      await emailjs.send(
+        'service_xf5afsv',
+        'template_id9cr7b',
+        templateParams,
+        '1WiAueT4yS6U1Q_E4'
+      );
+      
+      console.log('Email sent successfully via EmailJS');
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      throw new Error('Failed to send email notification');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -72,6 +97,9 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
       });
 
       if (error) throw error;
+
+      // Send email via EmailJS
+      await sendEmailJS(formState);
       
       toast({
         title: "Information saved!",

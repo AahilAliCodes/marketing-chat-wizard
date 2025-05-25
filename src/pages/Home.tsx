@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send } from 'lucide-react';
@@ -19,8 +20,11 @@ const Home = () => {
       return;
     }
 
+    // Convert to lowercase to avoid case sensitivity issues
+    const lowercaseUrl = websiteUrl.toLowerCase();
+
     // Simple URL validation
-    if (!/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(websiteUrl)) {
+    if (!/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(lowercaseUrl)) {
       toast({
         title: 'Invalid URL',
         description: 'Please enter a valid website URL',
@@ -33,7 +37,7 @@ const Home = () => {
       setIsLoading(true);
       
       // Format URL with https if not provided
-      const formattedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
+      const formattedUrl = lowercaseUrl.startsWith('http') ? lowercaseUrl : `https://${lowercaseUrl}`;
       
       // Navigate to dashboard with loading state
       navigate('/dashboard', { 
@@ -57,6 +61,11 @@ const Home = () => {
     if (e.key === 'Enter') {
       handleAnalyzeWebsite();
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Convert to lowercase as user types
+    setWebsiteUrl(e.target.value.toLowerCase());
   };
 
   return (
@@ -93,7 +102,7 @@ const Home = () => {
               placeholder="Enter your business website URL" 
               className="flex-1 p-2 outline-none text-gray-700"
               value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
+              onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               disabled={isLoading}
             />
