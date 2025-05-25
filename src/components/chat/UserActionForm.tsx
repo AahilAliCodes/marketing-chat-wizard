@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { SessionManager } from '@/utils/sessionManager';
 import { ChatMessage } from './types';
 import emailjs from '@emailjs/browser';
 
@@ -37,6 +39,7 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
     email: '',
   });
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -71,6 +74,33 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
     }
   };
 
+  const fetchUserData = async () => {
+    try {
+      // Fetch subreddit recommendations
+      const { data: subreddits } = await supabase
+        .from('subreddit_recommendations')
+        .select('*')
+        .eq('website_url', websiteUrl);
+
+      // Fetch reddit posts
+      const { data: redditPosts } = await supabase
+        .from('generated_reddit_posts')
+        .select('*')
+        .eq('website_url', websiteUrl);
+
+      return {
+        subredditRecommendations: subreddits || [],
+        redditPosts: redditPosts || []
+      };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return {
+        subredditRecommendations: [],
+        redditPosts: []
+      };
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -86,17 +116,33 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Save user action to Supabase
-      const { error } = await supabase.from('user_actions').insert({
+      // Get session data and user-specific data
+      const sessionId = SessionManager.getSessionId();
+      const userData = await fetchUserData();
+
+      // Prepare comprehensive user action data
+      const userActionData = {
         email: formState.email,
         first_name: formState.firstName,
-        last_name: formState.lastName,
+        last_name: formData.lastName,
         action_type: 'save',
         website_url: websiteUrl,
-        chat_data: null
-      });
+        chat_data: chatHistory,
+        user_id: user?.id || null,
+        session_id: sessionId,
+        subreddit_recommendations: userData.subredditRecommendations,
+        reddit_posts: userData.redditPosts
+      };
+
+      // Save comprehensive user action to Supabase
+      const { error } = await supabase
+        .from('user_actions')
+        .insert(userActionData);
 
       if (error) throw error;
+
+      // Store in session for persistence
+      SessionManager.setSessionData('user_action', userActionData);
 
       // Send email via EmailJS
       await sendEmailJS(formState);

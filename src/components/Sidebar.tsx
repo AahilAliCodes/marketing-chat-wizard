@@ -22,6 +22,16 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
     navigate('/auth');
   };
 
+  const handleDashboardClick = () => {
+    setActiveItem('home');
+    // Always navigate to dashboard, even if already there
+    navigate('/dashboard', { replace: true });
+    // Force a page refresh if we're already on dashboard
+    if (window.location.pathname === '/dashboard') {
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="relative h-screen w-12 md:w-40 bg-marketing-purple flex flex-col overflow-hidden">
       <div className="p-2 border-b border-white/20 flex justify-center md:justify-start">
@@ -35,17 +45,10 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
       <div className="flex flex-col flex-1 overflow-y-auto">
         <div className="p-1">
           <Button
-            onClick={() => {
-              setActiveItem('dashboard');
-              if (window.location.pathname !== '/dashboard') {
-                navigate('/dashboard');
-              } else {
-                navigate('/dashboard', { replace: true });
-              }
-            }}
+            onClick={handleDashboardClick}
             variant="ghost"
             className={`w-full justify-start mb-1 ${
-              activeItem === 'dashboard'
+              activeItem === 'dashboard' || activeItem === 'home'
                 ? 'bg-white/10 text-white'
                 : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}

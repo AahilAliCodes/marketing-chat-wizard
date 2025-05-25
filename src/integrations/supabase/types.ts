@@ -244,6 +244,10 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          reddit_posts: Json | null
+          session_id: string | null
+          subreddit_recommendations: Json | null
+          user_id: string | null
           website_url: string | null
         }
         Insert: {
@@ -254,6 +258,10 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          reddit_posts?: Json | null
+          session_id?: string | null
+          subreddit_recommendations?: Json | null
+          user_id?: string | null
           website_url?: string | null
         }
         Update: {
@@ -264,6 +272,10 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          reddit_posts?: Json | null
+          session_id?: string | null
+          subreddit_recommendations?: Json | null
+          user_id?: string | null
           website_url?: string | null
         }
         Relationships: []

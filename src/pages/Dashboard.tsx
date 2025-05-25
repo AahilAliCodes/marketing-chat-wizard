@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -7,6 +8,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SessionManager } from '@/utils/sessionManager';
 import AIChatInterface from '@/components/AIChatInterface';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw, MessageCircleMore } from 'lucide-react';
@@ -202,6 +204,10 @@ const Dashboard = () => {
   const state = location.state as LocationState;
 
   useEffect(() => {
+    // Initialize session for this analysis
+    const sessionId = SessionManager.getSessionId();
+    console.log('Current session ID:', sessionId);
+
     // Check if onboarding has been completed before
     const onboardingComplete = localStorage.getItem('dashboardOnboardingComplete') === 'true';
     
@@ -209,19 +215,36 @@ const Dashboard = () => {
       setIsAnalyzing(true);
       setWebsiteUrl(state.websiteUrl);
       
+      // Store current website analysis in session
+      SessionManager.setSessionData('current_analysis', {
+        websiteUrl: state.websiteUrl,
+        timestamp: Date.now()
+      });
+      
       const analyzeWebsite = async () => {
         const startTime = Date.now();
         
         try {
-          // First check if this website has already been analyzed
-          const { data: existingAnalysis } = await supabase
-            .from('website_analyses')
-            .select('*')
-            .eq('website_url', state.websiteUrl)
-            .single();
+          // First check if this website has already been analyzed for this session
+          let existingAnalysis = SessionManager.getSessionData(`analysis_${state.websiteUrl}`);
+          
+          if (!existingAnalysis) {
+            // Check database for existing analysis
+            const { data: dbAnalysis } = await supabase
+              .from('website_analyses')
+              .select('*')
+              .eq('website_url', state.websiteUrl)
+              .single();
+            
+            if (dbAnalysis) {
+              existingAnalysis = dbAnalysis;
+              // Cache in session
+              SessionManager.setSessionData(`analysis_${state.websiteUrl}`, dbAnalysis);
+            }
+          }
           
           if (existingAnalysis) {
-            // Website already exists in the database
+            // Website already exists in the database or session
             toast({
               title: 'Analysis Retrieved',
               description: 'Previously analyzed website data has been loaded',
@@ -239,6 +262,9 @@ const Dashboard = () => {
             if (error) {
               throw new Error(error.message);
             }
+            
+            // Cache the new analysis in session
+            SessionManager.setSessionData(`analysis_${state.websiteUrl}`, data);
             
             // Show success toast
             toast({
@@ -291,19 +317,32 @@ const Dashboard = () => {
       
       analyzeWebsite();
     } else {
-      // If not analyzing, still try to get the most recent website URL from database
+      // If not analyzing, try to get the most recent website URL from session first, then database
       const fetchRecentWebsite = async () => {
         try {
-          const { data: recentAnalysis } = await supabase
-            .from('website_analyses')
-            .select('website_url')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+          // First check session storage
+          const sessionAnalysis = SessionManager.getSessionData('current_analysis');
           
-          if (recentAnalysis) {
-            setWebsiteUrl(recentAnalysis.website_url);
-            await fetchCampaignRecommendations(recentAnalysis.website_url);
+          if (sessionAnalysis && sessionAnalysis.websiteUrl) {
+            setWebsiteUrl(sessionAnalysis.websiteUrl);
+            await fetchCampaignRecommendations(sessionAnalysis.websiteUrl);
+          } else {
+            // Fallback to database if no session data
+            const { data: recentAnalysis } = await supabase
+              .from('website_analyses')
+              .select('website_url')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (recentAnalysis) {
+              setWebsiteUrl(recentAnalysis.website_url);
+              SessionManager.setSessionData('current_analysis', {
+                websiteUrl: recentAnalysis.website_url,
+                timestamp: Date.now()
+              });
+              await fetchCampaignRecommendations(recentAnalysis.website_url);
+            }
           }
         } catch (error) {
           console.error('Error fetching recent website:', error);
