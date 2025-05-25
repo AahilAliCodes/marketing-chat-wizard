@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
 import { getUserChannels } from '@/services/ChatService';
 import { useToast } from '@/hooks/use-toast';
+import { SessionManager } from '@/utils/sessionManager';
 
 interface SavedConversation {
   id: string;
@@ -14,6 +15,7 @@ interface SavedConversation {
   description: string;
   updated_at: string;
   messageCount: number;
+  isSession?: boolean; // To distinguish session-based conversations
 }
 
 interface SavedConversationsProps {
@@ -27,56 +29,95 @@ const SavedConversations: React.FC<SavedConversationsProps> = ({ onSelectConvers
   const { channels, loadUserChannels } = useChat();
   const { toast } = useToast();
 
+  const getSessionConversations = () => {
+    const sessionId = SessionManager.getSessionId();
+    const sessionConversations: SavedConversation[] = [];
+    
+    // Get all localStorage keys that contain session chat data
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes(`${sessionId}_chat_`) && !key.includes('current_analysis')) {
+        try {
+          const chatData = JSON.parse(localStorage.getItem(key) || '{}');
+          if (chatData.messages && chatData.messages.length > 1) { // More than just welcome message
+            const websiteUrl = chatData.websiteUrl || 'Unknown Website';
+            const campaignType = chatData.campaignType || 'General Marketing';
+            
+            sessionConversations.push({
+              id: key,
+              name: `${campaignType} - ${websiteUrl}`,
+              description: `${chatData.messages.length} messages`,
+              updated_at: chatData.lastUpdated || new Date().toISOString(),
+              messageCount: chatData.messages.length,
+              isSession: true
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing session chat data:', error);
+        }
+      }
+    });
+    
+    // Sort by last updated
+    return sessionConversations.sort((a, b) => 
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+  };
+
   useEffect(() => {
     const fetchConversations = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
+      setIsLoading(true);
+      let allConversations: SavedConversation[] = [];
+      
+      // Get session-based conversations (for both authenticated and non-authenticated users)
+      const sessionConversations = getSessionConversations();
+      allConversations = [...sessionConversations];
 
-      try {
-        const userChannels = await getUserChannels();
-        
-        if (userChannels) {
-          const formattedConversations = userChannels.map(channel => ({
-            id: channel.id,
-            name: channel.name,
-            description: channel.description || '',
-            updated_at: channel.updated_at,
-            messageCount: 0 // Will be populated when channel is loaded
-          }));
+      // If user is authenticated, also get database conversations
+      if (user) {
+        try {
+          const userChannels = await getUserChannels();
           
-          setConversations(formattedConversations);
+          if (userChannels) {
+            const dbConversations = userChannels.map(channel => ({
+              id: channel.id,
+              name: channel.name,
+              description: channel.description || '',
+              updated_at: channel.updated_at,
+              messageCount: 0, // Will be populated when channel is loaded
+              isSession: false
+            }));
+            
+            allConversations = [...dbConversations, ...allConversations];
+          }
+        } catch (error) {
+          console.error('Error fetching user channels:', error);
+          toast({
+            variant: "destructive",
+            title: "Error loading saved conversations",
+            description: "There was a problem loading your database conversations."
+          });
         }
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-        toast({
-          variant: "destructive",
-          title: "Error loading conversations",
-          description: "There was a problem loading your saved conversations."
-        });
-      } finally {
-        setIsLoading(false);
       }
+      
+      setConversations(allConversations);
+      setIsLoading(false);
     };
 
     fetchConversations();
   }, [user, toast]);
 
-  const handleSelectConversation = (channelId: string) => {
-    onSelectConversation(channelId);
+  const handleSelectConversation = (conversationId: string) => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    
+    if (conversation?.isSession) {
+      // For session-based conversations, we need to handle differently
+      // We'll use a special prefix to indicate this is a session conversation
+      onSelectConversation(`session_${conversationId}`);
+    } else {
+      // Regular database conversation
+      onSelectConversation(conversationId);
+    }
   };
-
-  if (!user) {
-    return (
-      <Card className="mb-6">
-        <CardContent className="p-6 text-center">
-          <User className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-600 mb-4">Sign in to view your saved conversations</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -105,13 +146,18 @@ const SavedConversations: React.FC<SavedConversationsProps> = ({ onSelectConvers
           <MessageSquare className="h-5 w-5" />
           Saved Conversations ({conversations.length})
         </CardTitle>
+        {!user && conversations.length > 0 && (
+          <p className="text-sm text-gray-500">
+            Sign in to sync your conversations across devices
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         {conversations.length === 0 ? (
           <div className="text-center py-8">
             <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 mb-2">No saved conversations yet</p>
-            <p className="text-sm text-gray-500">Start a conversation and save it to see it here</p>
+            <p className="text-sm text-gray-500">Start a conversation to see it here</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -123,7 +169,14 @@ const SavedConversations: React.FC<SavedConversationsProps> = ({ onSelectConvers
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 mb-1">{conversation.name}</h4>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-gray-900">{conversation.name}</h4>
+                      {conversation.isSession && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          Local
+                        </span>
+                      )}
+                    </div>
                     {conversation.description && (
                       <p className="text-sm text-gray-600 mb-2">{conversation.description}</p>
                     )}

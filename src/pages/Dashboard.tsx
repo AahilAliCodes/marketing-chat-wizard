@@ -365,6 +365,20 @@ const Dashboard = () => {
     setSelectedConversation(channelId);
   };
 
+  // Function to get conversation data for session-based chats
+  const getSessionConversationData = (sessionKey: string) => {
+    try {
+      const chatData = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+      return {
+        websiteUrl: chatData.websiteUrl || websiteUrl,
+        campaignType: chatData.campaignType
+      };
+    } catch (error) {
+      console.error('Error parsing session conversation data:', error);
+      return { websiteUrl, campaignType: undefined };
+    }
+  };
+
   // Show loading screen during loading or analysis
   if (isLoading || isAnalyzing) {
     return (
@@ -377,6 +391,36 @@ const Dashboard = () => {
       />
     );
   }
+
+  // Determine the props for AIChatInterface based on conversation type
+  const getChatInterfaceProps = () => {
+    if (selectedConversation?.startsWith('session_')) {
+      // Session-based conversation
+      const sessionKey = selectedConversation.replace('session_', '');
+      const sessionData = getSessionConversationData(sessionKey);
+      return {
+        websiteUrl: sessionData.websiteUrl,
+        campaignType: sessionData.campaignType,
+        channelId: sessionKey // Use session key as channel ID for session conversations
+      };
+    } else if (selectedConversation) {
+      // Database conversation
+      return {
+        websiteUrl,
+        campaignType: undefined,
+        channelId: selectedConversation
+      };
+    } else if (activeCampaign) {
+      // Active campaign chat
+      return {
+        websiteUrl,
+        campaignType: campaignOptions.find(c => c.id === activeCampaign)?.title,
+        channelId: undefined
+      };
+    }
+    
+    return { websiteUrl, campaignType: undefined, channelId: undefined };
+  };
 
   return (
     <div className="flex h-screen w-full">
@@ -488,11 +532,7 @@ const Dashboard = () => {
           ) : (
             <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
               <div className="bg-white rounded-lg shadow-sm border p-6 h-full">
-                <AIChatInterface 
-                  websiteUrl={websiteUrl} 
-                  campaignType={activeCampaign ? campaignOptions.find(c => c.id === activeCampaign)?.title : undefined}
-                  channelId={selectedConversation || undefined}
-                />
+                <AIChatInterface {...getChatInterfaceProps()} />
               </div>
             </div>
           )}

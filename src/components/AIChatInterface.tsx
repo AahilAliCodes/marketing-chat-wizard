@@ -9,6 +9,8 @@ import ChatMessage from './chat/ChatMessage';
 import ChatInputForm from './chat/ChatInputForm';
 import UserActionForm from './chat/UserActionForm';
 import AnimatedRocket from './chat/AnimatedRocket';
+import { SessionManager } from '@/utils/sessionManager';
+import { useAuth } from '@/context/AuthContext';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -21,8 +23,17 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Generate a unique chat key for this conversation
+  const getChatKey = () => {
+    if (channelId) return `channel_${channelId}`;
+    return `chat_${websiteUrl}_${campaignType || 'default'}`;
+  };
 
   useEffect(() => {
+    const chatKey = getChatKey();
+    
     // If channelId is provided, load the conversation from that channel
     if (channelId) {
       // Load messages for this specific channel
@@ -34,17 +45,52 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
         timestamp: new Date()
       }]);
     } else {
-      // Generate welcome message based on campaign type
-      let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+      // Try to load existing conversation from session storage
+      const savedChat = SessionManager.getSessionData(chatKey);
       
-      setChatHistory([{
-        id: 'welcome',
-        role: 'BLASTari',
-        content: welcomeMessage,
-        timestamp: new Date()
-      }]);
+      if (savedChat && savedChat.messages && savedChat.messages.length > 0) {
+        // Convert timestamp strings back to Date objects
+        const restoredMessages = savedChat.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setChatHistory(restoredMessages);
+      } else {
+        // Generate welcome message based on campaign type
+        let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+        
+        const initialMessage = {
+          id: 'welcome',
+          role: 'BLASTari' as const,
+          content: welcomeMessage,
+          timestamp: new Date()
+        };
+        
+        setChatHistory([initialMessage]);
+        
+        // Save the initial conversation
+        SessionManager.setSessionData(chatKey, {
+          websiteUrl,
+          campaignType,
+          messages: [initialMessage],
+          lastUpdated: new Date().toISOString()
+        });
+      }
     }
   }, [websiteUrl, campaignType, channelId]);
+
+  // Save conversation whenever chat history changes
+  useEffect(() => {
+    if (chatHistory.length > 0 && !channelId) {
+      const chatKey = getChatKey();
+      SessionManager.setSessionData(chatKey, {
+        websiteUrl,
+        campaignType,
+        messages: chatHistory,
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  }, [chatHistory, websiteUrl, campaignType, channelId]);
 
   const handleSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
