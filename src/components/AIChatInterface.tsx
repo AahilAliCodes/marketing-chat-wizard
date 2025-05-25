@@ -36,7 +36,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
   const loadChannelMessages = async (channelId: string) => {
     try {
       const { data: messages, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
