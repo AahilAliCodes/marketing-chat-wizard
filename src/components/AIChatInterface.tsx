@@ -11,6 +11,7 @@ import UserActionForm from './chat/UserActionForm';
 import AnimatedRocket from './chat/AnimatedRocket';
 import { SessionManager } from '@/utils/sessionManager';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -31,55 +32,120 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     return `chat_${websiteUrl}_${campaignType || 'default'}`;
   };
 
+  // Load messages from database channel
+  const loadChannelMessages = async (channelId: string) => {
+    try {
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading channel messages:', error);
+        return [];
+      }
+
+      return messages?.map(msg => ({
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant' | 'BLASTari',
+        content: msg.content,
+        timestamp: new Date(msg.created_at)
+      })) || [];
+    } catch (error) {
+      console.error('Error loading channel messages:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     const chatKey = getChatKey();
     
-    // If channelId is provided, load the conversation from that channel
-    if (channelId) {
-      // Load messages for this specific channel
-      // For now, we'll show a welcome message indicating this is a saved conversation
-      setChatHistory([{
-        id: 'saved-welcome',
-        role: 'BLASTari',
-        content: `Welcome back to your saved conversation! I'm ready to continue helping you with your marketing campaign for ${websiteUrl}. 🚀`,
-        timestamp: new Date()
-      }]);
-    } else {
-      // Try to load existing conversation from session storage
-      const savedChat = SessionManager.getSessionData(chatKey);
-      
-      if (savedChat && savedChat.messages && savedChat.messages.length > 0) {
-        // Convert timestamp strings back to Date objects
-        const restoredMessages = savedChat.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }));
-        setChatHistory(restoredMessages);
+    const initializeChat = async () => {
+      if (channelId) {
+        // Handle different types of channel IDs
+        if (channelId.startsWith('session_')) {
+          // Session-based conversation
+          const sessionKey = channelId.replace('session_', '');
+          try {
+            const chatData = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+            if (chatData.messages && chatData.messages.length > 0) {
+              const restoredMessages = chatData.messages.map((msg: any) => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp)
+              }));
+              setChatHistory(restoredMessages);
+            } else {
+              // Show welcome message for empty session conversation
+              setChatHistory([{
+                id: 'session-welcome',
+                role: 'BLASTari',
+                content: `Welcome back to your conversation! I'm ready to continue helping you with your marketing campaign for ${websiteUrl}. 🚀`,
+                timestamp: new Date()
+              }]);
+            }
+          } catch (error) {
+            console.error('Error loading session conversation:', error);
+            setChatHistory([{
+              id: 'error-welcome',
+              role: 'BLASTari',
+              content: `Welcome! I'm ready to help you with your marketing campaign for ${websiteUrl}. 🚀`,
+              timestamp: new Date()
+            }]);
+          }
+        } else {
+          // Database channel conversation
+          const messages = await loadChannelMessages(channelId);
+          if (messages.length > 0) {
+            setChatHistory(messages);
+          } else {
+            // Show welcome message for empty database conversation
+            setChatHistory([{
+              id: 'channel-welcome',
+              role: 'BLASTari',
+              content: `Welcome back to your saved conversation! I'm ready to continue helping you with your marketing campaign for ${websiteUrl}. 🚀`,
+              timestamp: new Date()
+            }]);
+          }
+        }
       } else {
-        // Generate welcome message based on campaign type
-        let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+        // Regular conversation - try to load existing or create new
+        const savedChat = SessionManager.getSessionData(chatKey);
         
-        const initialMessage = {
-          id: 'welcome',
-          role: 'BLASTari' as const,
-          content: welcomeMessage,
-          timestamp: new Date()
-        };
-        
-        setChatHistory([initialMessage]);
-        
-        // Save the initial conversation
-        SessionManager.setSessionData(chatKey, {
-          websiteUrl,
-          campaignType,
-          messages: [initialMessage],
-          lastUpdated: new Date().toISOString()
-        });
+        if (savedChat && savedChat.messages && savedChat.messages.length > 0) {
+          const restoredMessages = savedChat.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setChatHistory(restoredMessages);
+        } else {
+          // Generate welcome message based on campaign type
+          let welcomeMessage = `Hi there! I'm your marketing assistant for ${websiteUrl} — here to help you craft campaigns, boost visibility, and grow your brand one step at a time. Let's make something amazing together! 🚀`;
+          
+          const initialMessage = {
+            id: 'welcome',
+            role: 'BLASTari' as const,
+            content: welcomeMessage,
+            timestamp: new Date()
+          };
+          
+          setChatHistory([initialMessage]);
+          
+          // Save the initial conversation
+          SessionManager.setSessionData(chatKey, {
+            websiteUrl,
+            campaignType,
+            messages: [initialMessage],
+            lastUpdated: new Date().toISOString()
+          });
+        }
       }
-    }
+    };
+
+    initializeChat();
   }, [websiteUrl, campaignType, channelId]);
 
-  // Save conversation whenever chat history changes
+  // Save conversation whenever chat history changes (only for non-channel conversations)
   useEffect(() => {
     if (chatHistory.length > 0 && !channelId) {
       const chatKey = getChatKey();
@@ -174,12 +240,15 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           websiteUrl={websiteUrl}
           campaignType={campaignType}
         />
-        <UserActionForm
-          websiteUrl={websiteUrl}
-          campaignType={campaignType}
-          chatHistory={chatHistory}
-          onSuccess={handleActionSuccess}
-        />
+        {/* Only show UserActionForm for non-channel conversations */}
+        {!channelId && (
+          <UserActionForm
+            websiteUrl={websiteUrl}
+            campaignType={campaignType}
+            chatHistory={chatHistory}
+            onSuccess={handleActionSuccess}
+          />
+        )}
       </div>
     </div>
   );
