@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +11,7 @@ import AnimatedRocket from './chat/AnimatedRocket';
 import { SessionManager } from '@/utils/sessionManager';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AIChatInterfaceProps {
   websiteUrl: string;
@@ -63,10 +63,14 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     if (!user) return;
 
     try {
+      // Generate a unique ID for the channel
+      const channelId = uuidv4();
+      
       // Create a new channel for this conversation
       const { data: channel, error: channelError } = await supabase
         .from('user_chat_channels')
         .insert({
+          id: channelId,
           user_id: user.id,
           name: `Chat for ${websiteUrl}`,
           description: campaignType || 'General conversation'
@@ -78,7 +82,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
 
       // Save all messages to the database
       const chatMessagesToSave = messages.map(msg => ({
-        channel_id: channel.id,
+        channel_id: channelId,
         role: msg.role,
         content: msg.content,
         user_id: user.id,
@@ -203,7 +207,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
         lastUpdated: new Date().toISOString()
       });
 
-      // If user is authenticated, also save to database
+      // If user is authenticated, automatically save to database
       if (user && chatHistory.length > 1) { // Only save if there's actual conversation beyond welcome message
         saveChatToDatabase(chatHistory);
       }
@@ -288,10 +292,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           websiteUrl={websiteUrl}
           campaignType={campaignType}
         />
-        {/* Only show FeedbackForm for non-channel conversations */}
-        {!channelId && (
-          <FeedbackForm websiteUrl={websiteUrl} />
-        )}
+        <FeedbackForm websiteUrl={websiteUrl} />
       </div>
     </div>
   );
