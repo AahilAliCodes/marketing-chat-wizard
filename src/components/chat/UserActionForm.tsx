@@ -120,14 +120,22 @@ const UserActionForm: React.FC<UserActionFormProps> = ({
       const sessionId = SessionManager.getSessionId();
       const userData = await fetchUserData();
 
+      // Serialize chat history to JSON-compatible format
+      const serializedChatHistory = chatHistory.map(message => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp.toISOString()
+      }));
+
       // Prepare comprehensive user action data
       const userActionData = {
         email: formState.email,
         first_name: formState.firstName,
-        last_name: formData.lastName,
+        last_name: formState.lastName,
         action_type: 'save',
         website_url: websiteUrl,
-        chat_data: chatHistory,
+        chat_data: serializedChatHistory,
         user_id: user?.id || null,
         session_id: sessionId,
         subreddit_recommendations: userData.subredditRecommendations,
