@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 interface ChatHeaderProps {
   campaignType?: string;
   websiteUrl: string;
+  isChannelConversation?: boolean;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ campaignType, websiteUrl }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ campaignType, websiteUrl, isChannelConversation }) => {
   const getCampaignIcon = () => {
     switch (campaignType) {
       case 'Community Building on Discord':
@@ -30,13 +31,23 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ campaignType, websiteUrl }) => 
         </div>
         <div>
           <h3 className="text-xl font-medium">
-            {campaignType ? `${campaignType}` : 'Marketing AI Chat'}
+            {isChannelConversation 
+              ? 'Saved Conversation' 
+              : campaignType 
+                ? `${campaignType}` 
+                : 'Marketing AI Chat'
+            }
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span className="truncate max-w-[200px]">Website: {websiteUrl}</span>
-            {campaignType && (
+            {campaignType && !isChannelConversation && (
               <Badge variant="outline" className="ml-1">
                 {campaignType}
+              </Badge>
+            )}
+            {isChannelConversation && (
+              <Badge variant="secondary" className="ml-1">
+                Saved
               </Badge>
             )}
           </div>
