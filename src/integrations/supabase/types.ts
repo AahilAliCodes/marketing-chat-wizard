@@ -334,6 +334,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feedback: {
+        Row: {
+          created_at: string
+          email: string
+          feedback: string
+          id: string
+          name: string
+          user_id: string | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          feedback: string
+          id?: string
+          name: string
+          user_id?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          feedback?: string
+          id?: string
+          name?: string
+          user_id?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       website_analyses: {
         Row: {
           constraints: string[]

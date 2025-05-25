@@ -7,7 +7,7 @@ import { ChatMessage as ChatMessageType } from './chat/types';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessage from './chat/ChatMessage';
 import ChatInputForm from './chat/ChatInputForm';
-import UserActionForm from './chat/UserActionForm';
+import FeedbackForm from './chat/FeedbackForm';
 import AnimatedRocket from './chat/AnimatedRocket';
 import { SessionManager } from '@/utils/sessionManager';
 import { useAuth } from '@/context/AuthContext';
@@ -55,6 +55,46 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     } catch (error) {
       console.error('Error loading channel messages:', error);
       return [];
+    }
+  };
+
+  // Save chat to database if user is authenticated
+  const saveChatToDatabase = async (messages: ChatMessageType[]) => {
+    if (!user) return;
+
+    try {
+      // Create a new channel for this conversation
+      const { data: channel, error: channelError } = await supabase
+        .from('user_chat_channels')
+        .insert({
+          user_id: user.id,
+          name: `Chat for ${websiteUrl}`,
+          description: campaignType || 'General conversation'
+        })
+        .select()
+        .single();
+
+      if (channelError) throw channelError;
+
+      // Save all messages to the database
+      const chatMessagesToSave = messages.map(msg => ({
+        channel_id: channel.id,
+        role: msg.role,
+        content: msg.content,
+        user_id: user.id,
+        website_url: websiteUrl,
+        campaign_type: campaignType
+      }));
+
+      const { error: messagesError } = await supabase
+        .from('chat_messages')
+        .insert(chatMessagesToSave);
+
+      if (messagesError) throw messagesError;
+
+      console.log('Chat saved to database successfully');
+    } catch (error) {
+      console.error('Error saving chat to database:', error);
     }
   };
 
@@ -136,7 +176,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           
           setChatHistory([initialMessage]);
           
-          // Save the initial conversation
+          // Save the initial conversation in session storage
           SessionManager.setSessionData(chatKey, {
             websiteUrl,
             campaignType,
@@ -150,18 +190,25 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     initializeChat();
   }, [websiteUrl, campaignType, channelId]);
 
-  // Save conversation whenever chat history changes (only for non-channel conversations)
+  // Save conversation whenever chat history changes
   useEffect(() => {
     if (chatHistory.length > 0 && !channelId) {
       const chatKey = getChatKey();
+      
+      // Save to session storage for immediate persistence
       SessionManager.setSessionData(chatKey, {
         websiteUrl,
         campaignType,
         messages: chatHistory,
         lastUpdated: new Date().toISOString()
       });
+
+      // If user is authenticated, also save to database
+      if (user && chatHistory.length > 1) { // Only save if there's actual conversation beyond welcome message
+        saveChatToDatabase(chatHistory);
+      }
     }
-  }, [chatHistory, websiteUrl, campaignType, channelId]);
+  }, [chatHistory, websiteUrl, campaignType, channelId, user]);
 
   const handleSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -207,10 +254,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
     });
   };
 
-  const handleActionSuccess = (actionType: string, data?: any) => {
-    console.log(`Action ${actionType} completed successfully`, data);
-  };
-
   return (
     <div className="flex flex-col h-full">
       <ChatHeader 
@@ -245,14 +288,9 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ websiteUrl, campaignT
           websiteUrl={websiteUrl}
           campaignType={campaignType}
         />
-        {/* Only show UserActionForm for non-channel conversations */}
+        {/* Only show FeedbackForm for non-channel conversations */}
         {!channelId && (
-          <UserActionForm
-            websiteUrl={websiteUrl}
-            campaignType={campaignType}
-            chatHistory={chatHistory}
-            onSuccess={handleActionSuccess}
-          />
+          <FeedbackForm websiteUrl={websiteUrl} />
         )}
       </div>
     </div>
