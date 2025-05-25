@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { ChatProvider } from '@/context/ChatContext';
@@ -10,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '@/utils/sessionManager';
 import AIChatInterface from '@/components/AIChatInterface';
+import SavedConversations from '@/components/SavedConversations';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Users, Video, FileText, ChevronLeft, RefreshCw, MessageCircleMore } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -39,6 +39,7 @@ const Dashboard = () => {
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [campaignOptions, setCampaignOptions] = useState<CampaignOption[]>([]);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { user } = useAuth();
@@ -63,7 +64,7 @@ const Dashboard = () => {
         .from('campaign_recommendations')
         .select('*')
         .eq('website_url', url)
-        .limit(10); // Fetch more than we need to ensure we have some Reddit options
+        .limit(10);
 
       if (error) {
         throw error;
@@ -82,7 +83,6 @@ const Dashboard = () => {
           icon: getPlatformIcon(rec.platform)
         }));
         
-        // Find a Reddit-related option
         const redditOptions = formattedRecommendations.filter(rec => 
           rec.platform.toLowerCase().includes('reddit') || 
           rec.title.toLowerCase().includes('reddit')
@@ -93,14 +93,12 @@ const Dashboard = () => {
           !rec.title.toLowerCase().includes('reddit')
         );
         
-        // Create final recommendations array with Reddit first if available
         if (redditOptions.length > 0) {
           formattedRecommendations = [
             redditOptions[0],
             ...nonRedditOptions
           ].slice(0, 3);
         } else {
-          // If no Reddit options, add a placeholder Reddit recommendation
           const genericRedditRecommendation = {
             id: 'reddit-placeholder',
             title: 'Reddit Community Engagement',
@@ -125,7 +123,6 @@ const Dashboard = () => {
         
         setCampaignOptions(formattedRecommendations);
       } else {
-        // If no recommendations at all, add a placeholder Reddit recommendation
         const genericRedditRecommendation = {
           id: 'reddit-placeholder',
           title: 'Reddit Community Engagement',
@@ -172,7 +169,6 @@ const Dashboard = () => {
     });
     
     try {
-      // Call the edge function to reanalyze
       const { data, error } = await supabase.functions.invoke('analyze-website', {
         body: { url: websiteUrl, force: true },
       });
@@ -181,7 +177,6 @@ const Dashboard = () => {
         throw new Error(error.message);
       }
       
-      // Fetch the newly generated recommendations
       await fetchCampaignRecommendations(websiteUrl);
       
       toast({
@@ -365,6 +360,11 @@ const Dashboard = () => {
     navigate('/reddit-generator');
   };
 
+  // Handle selecting a conversation
+  const handleSelectConversation = (channelId: string) => {
+    setSelectedConversation(channelId);
+  };
+
   // Show loading screen during loading or analysis
   if (isLoading || isAnalyzing) {
     return (
@@ -386,34 +386,46 @@ const Dashboard = () => {
         <div className="flex flex-1 flex-col overflow-hidden relative">
           <div className="p-6 border-b flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4 mb-2 md:mb-0">
-              <h1 className="text-3xl font-bold">Top Campaign Recommendations</h1>
-              {activeCampaign && (
+              <h1 className="text-3xl font-bold">
+                {selectedConversation ? 'Saved Conversation' : activeCampaign ? 'Campaign Chat' : 'Top Campaign Recommendations'}
+              </h1>
+              {(activeCampaign || selectedConversation) && (
                 <Button
                   variant="outline"
-                  onClick={() => setActiveCampaign(null)}
+                  onClick={() => {
+                    setActiveCampaign(null);
+                    setSelectedConversation(null);
+                  }}
                   className="whitespace-nowrap flex gap-2 items-center"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Back to All Campaigns
+                  Back to Dashboard
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={regenerateRecommendations}
-                disabled={isRegenerating}
-                className="whitespace-nowrap flex gap-2 items-center"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-                Generate new recommendations
-              </Button>
-              <p className="text-gray-600 mt-2 md:mt-0 ml-4">Website: {websiteUrl}</p>
-            </div>
+            {!activeCampaign && !selectedConversation && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={regenerateRecommendations}
+                  disabled={isRegenerating}
+                  className="whitespace-nowrap flex gap-2 items-center"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                  Generate new recommendations
+                </Button>
+                <p className="text-gray-600 mt-2 md:mt-0 ml-4">Website: {websiteUrl}</p>
+              </div>
+            )}
           </div>
           
-          {!activeCampaign ? (
+          {!activeCampaign && !selectedConversation ? (
             <div className="overflow-y-auto pb-16">
+              {/* Saved Conversations Section */}
+              <div className="px-4 md:px-12 pt-6">
+                <SavedConversations onSelectConversation={handleSelectConversation} />
+              </div>
+              
               <div id="campaign-recommendations" className="grid md:grid-cols-3 gap-8 mb-8 px-4 md:px-12">
                 {campaignOptions.length > 0 ? (
                   campaignOptions.map((campaign) => (
@@ -467,7 +479,6 @@ const Dashboard = () => {
                 )}
               </div>
               
-              {/* Subreddit Recommendations */}
               {websiteUrl && (
                 <div className="px-4 md:px-12 pb-8">
                   <SubredditRecommendations websiteUrl={websiteUrl} />
@@ -476,19 +487,17 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
-              {activeCampaign && (
-                <div className="bg-white rounded-lg shadow-sm border p-6 h-full">
-                  <AIChatInterface 
-                    websiteUrl={websiteUrl} 
-                    campaignType={campaignOptions.find(c => c.id === activeCampaign)?.title || undefined} 
-                  />
-                </div>
-              )}
+              <div className="bg-white rounded-lg shadow-sm border p-6 h-full">
+                <AIChatInterface 
+                  websiteUrl={websiteUrl} 
+                  campaignType={activeCampaign ? campaignOptions.find(c => c.id === activeCampaign)?.title : undefined}
+                  channelId={selectedConversation || undefined}
+                />
+              </div>
             </div>
           )}
           
-          {/* Reddit logo at the bottom left - only show when no campaign is active */}
-          {!activeCampaign && (
+          {!activeCampaign && !selectedConversation && (
             <div id="reddit-icon" className="absolute bottom-4 left-4 z-10 flex gap-3">
               <button 
                 onClick={handleRedditClick}
@@ -504,7 +513,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Onboarding overlay */}
           {showOnboarding && (
             <OnboardingTour 
               onComplete={() => setShowOnboarding(false)} 
