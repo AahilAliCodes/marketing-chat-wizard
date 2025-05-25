@@ -256,7 +256,16 @@ const Dashboard = () => {
         } catch (error: any) {
           console.error('Analysis error:', error);
           
-          // Provide specific feedback based on the error
+          // Check for the specific edge function error
+          if (error.message?.includes('Edge Function returned a non-2xx status code') || 
+              error.message?.includes('Extracted content is too short') ||
+              error.message?.includes('website might be blocking access')) {
+            // Navigate to the analysis error page
+            navigate('/analysis-error');
+            return;
+          }
+          
+          // Provide specific feedback based on other errors
           let errorMessage = 'Failed to analyze website';
           
           if (error.message?.includes('OpenAI API key is not configured')) {
@@ -310,7 +319,7 @@ const Dashboard = () => {
       
       fetchRecentWebsite();
     }
-  }, [state?.isAnalyzing, state?.websiteUrl, toast]);
+  }, [state?.isAnalyzing, state?.websiteUrl, toast, navigate]);
 
   // Handle Reddit logo click - navigate to reddit generator page
   const handleRedditClick = () => {

@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import SharedChat from "./pages/SharedChat";
 import RedditGenerator from "./pages/RedditGenerator";
+import AnalysisError from "./pages/AnalysisError";
 import { AuthProvider } from "./context/AuthContext";
 import { ChatProvider } from "./context/ChatContext";
 
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/shared-chat/:chatId" element={<SharedChat />} />
               <Route path="/reddit-generator" element={<RedditGenerator />} />
+              <Route path="/analysis-error" element={<AnalysisError />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
