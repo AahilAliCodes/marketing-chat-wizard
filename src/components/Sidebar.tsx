@@ -24,12 +24,7 @@ const Sidebar = ({ activeItem, setActiveItem }: SidebarProps) => {
 
   const handleDashboardClick = () => {
     setActiveItem('home');
-    // Always navigate to dashboard, even if already there
-    navigate('/dashboard', { replace: true });
-    // Force a page refresh if we're already on dashboard
-    if (window.location.pathname === '/dashboard') {
-      window.location.reload();
-    }
+    navigate('/dashboard');
   };
 
   return (
