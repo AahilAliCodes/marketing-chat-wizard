@@ -64,7 +64,8 @@ const Research = () => {
 
   useEffect(() => {
     // Check if user drilled down from a specific subreddit
-    const storedSubreddit = SessionManager.getSessionData('selected_subreddit');
+    const storedSubreddit = SessionManager.getSelectedSubreddit();
+    console.log('Stored subreddit from session:', storedSubreddit);
     if (storedSubreddit) {
       setSelectedSubreddit(storedSubreddit);
     } else {
@@ -76,6 +77,7 @@ const Research = () => {
   // Fetch deep analytics when a subreddit is selected
   useEffect(() => {
     if (selectedSubreddit) {
+      console.log('Selected subreddit changed, fetching analytics for:', selectedSubreddit);
       fetchDeepAnalytics(selectedSubreddit);
     }
   }, [selectedSubreddit]);
@@ -221,17 +223,34 @@ const Research = () => {
 
   const fetchDeepAnalytics = async (subreddit: string) => {
     setIsLoadingDeepAnalytics(true);
+    setDeepAnalytics(null); // Clear previous data
+    
     try {
-      console.log('Fetching deep analytics for:', subreddit);
+      console.log('Invoking subreddit-deep-analytics function for:', subreddit);
+      
       const { data, error } = await supabase.functions.invoke('subreddit-deep-analytics', {
-        body: { subreddit }
+        body: { subreddit: subreddit }
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
-        throw new Error(error.message);
+        console.error('Function invocation error:', error);
+        throw new Error(error.message || 'Failed to fetch analytics');
       }
 
+      if (!data) {
+        throw new Error('No data received from analytics function');
+      }
+
+      if (!data.analytics) {
+        console.error('Invalid response structure:', data);
+        throw new Error('Invalid response structure - missing analytics');
+      }
+
+      console.log('Setting deep analytics data:', data.analytics);
       setDeepAnalytics(data.analytics);
+      
       toast({
         title: 'Analytics Generated',
         description: `Deep analytics for r/${subreddit} have been generated successfully`,
@@ -240,7 +259,7 @@ const Research = () => {
       console.error('Error fetching deep analytics:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate deep analytics for this subreddit',
+        description: error.message || 'Failed to generate deep analytics for this subreddit',
         variant: 'destructive',
       });
     } finally {
@@ -250,8 +269,9 @@ const Research = () => {
 
   const handleBackToDashboard = () => {
     // Clear the stored subreddit when going back
-    SessionManager.removeSessionData('selected_subreddit');
+    SessionManager.clearSelectedSubreddit();
     setSelectedSubreddit(null);
+    setDeepAnalytics(null); // Clear analytics data
     navigate('/dashboard');
   };
 
@@ -532,18 +552,24 @@ const Research = () => {
       </div>
       
       {isLoadingDeepAnalytics ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(10)].map((_, index) => (
-            <Card key={index} className="border-2">
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-20 mb-2" />
-                <Skeleton className="h-4 w-24" />
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-gray-600">Fetching deep analytics for: {subreddit}</div>
+            <div className="text-sm text-gray-500 mt-2">This may take a few moments...</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(10)].map((_, index) => (
+              <Card key={index} className="border-2">
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-20 mb-2" />
+                  <Skeleton className="h-4 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       ) : deepAnalytics ? (
         <div className="space-y-8">
@@ -762,7 +788,14 @@ const Research = () => {
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-gray-500">Click "Back to Dashboard" and select a subreddit to view deep analytics.</p>
+          <p className="text-gray-500">Failed to load analytics. Please try again.</p>
+          <Button 
+            onClick={() => fetchDeepAnalytics(subreddit)} 
+            className="mt-4"
+            variant="outline"
+          >
+            Retry Analytics
+          </Button>
         </div>
       )}
     </div>
