@@ -1,3 +1,4 @@
+
 interface SessionData {
   [key: string]: any;
 }
@@ -164,5 +165,20 @@ export class SessionManager {
     const postsKey = `posts_${websiteUrl}`;
     
     return this.getSessionData(analyticsKey) !== null || this.getSessionData(postsKey) !== null;
+  }
+
+  // Set selected subreddit for drilldown
+  static setSelectedSubreddit(subreddit: string): void {
+    this.setSessionData('selected_subreddit', subreddit);
+  }
+
+  // Get selected subreddit for drilldown
+  static getSelectedSubreddit(): string | null {
+    return this.getSessionData('selected_subreddit');
+  }
+
+  // Clear selected subreddit
+  static clearSelectedSubreddit(): void {
+    this.removeSessionData('selected_subreddit');
   }
 }
