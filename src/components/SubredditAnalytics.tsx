@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { SessionManager } from '@/utils/sessionManager';
 
 interface SubredditData {
   subreddit: string;
@@ -69,15 +72,29 @@ const KPI_EXPLANATIONS = {
 const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) => {
   const [subredditData, setSubredditData] = useState<SubredditData[]>([]);
   const [redditPosts, setRedditPosts] = useState<RedditPost[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const fetchStoredSubredditAnalytics = async () => {
     try {
-      // First check if we have stored analytics for this website
+      console.log('Fetching stored analytics for:', websiteUrl);
+      setIsLoadingAnalytics(true);
+
+      // First check session cache
+      const sessionKey = `analytics_${websiteUrl}`;
+      const cachedData = SessionManager.getSessionData(sessionKey);
+      
+      if (cachedData) {
+        console.log('Found cached analytics data');
+        setSubredditData(cachedData);
+        setIsLoadingAnalytics(false);
+        return true;
+      }
+
+      // Then check database
       const { data: storedAnalytics, error } = await supabase
         .from('reddit_subreddit_analytics')
         .select('*')
@@ -89,7 +106,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
 
       if (storedAnalytics && storedAnalytics.length > 0) {
-        // Convert stored data to the expected format
         const formattedData = storedAnalytics.map(item => ({
           subreddit: item.subreddit,
           engagement_rate: parseFloat(item.engagement_rate.toString()),
@@ -101,18 +117,40 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         }));
 
         setSubredditData(formattedData);
-        return true; // Data found and loaded
+        
+        // Cache in session
+        SessionManager.setSessionData(sessionKey, formattedData);
+        
+        setIsLoadingAnalytics(false);
+        return true;
       }
 
-      return false; // No stored data found
+      setIsLoadingAnalytics(false);
+      return false;
     } catch (error) {
       console.error('Error fetching stored analytics:', error);
+      setIsLoadingAnalytics(false);
       return false;
     }
   };
 
   const fetchStoredRedditPosts = async () => {
     try {
+      console.log('Fetching stored posts for:', websiteUrl);
+      setIsLoadingPosts(true);
+
+      // First check session cache
+      const sessionKey = `posts_${websiteUrl}`;
+      const cachedData = SessionManager.getSessionData(sessionKey);
+      
+      if (cachedData) {
+        console.log('Found cached posts data');
+        setRedditPosts(cachedData);
+        setIsLoadingPosts(false);
+        return true;
+      }
+
+      // Then check database
       const { data: storedPosts, error } = await supabase
         .from('reddit_posts_analysis')
         .select('*')
@@ -136,95 +174,35 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         }));
 
         setRedditPosts(formattedPosts);
+        
+        // Cache in session
+        SessionManager.setSessionData(sessionKey, formattedPosts);
+        
+        setIsLoadingPosts(false);
         return true;
       }
 
+      setIsLoadingPosts(false);
       return false;
     } catch (error) {
       console.error('Error fetching stored posts:', error);
+      setIsLoadingPosts(false);
       return false;
-    }
-  };
-
-  const storeSubredditAnalytics = async (analyticsData: SubredditData[]) => {
-    try {
-      // Clear existing analytics for this website
-      await supabase
-        .from('reddit_subreddit_analytics')
-        .delete()
-        .eq('website_url', websiteUrl);
-
-      // Store new analytics
-      const dataToStore = analyticsData.map(item => ({
-        website_url: websiteUrl,
-        subreddit: item.subreddit,
-        engagement_rate: item.engagement_rate,
-        visibility_score: item.visibility_score,
-        active_posters: item.active_posters,
-        strictness_index: item.strictness_index,
-        top_themes: item.top_themes,
-        subscribers: item.subscribers
-      }));
-
-      const { error } = await supabase
-        .from('reddit_subreddit_analytics')
-        .insert(dataToStore);
-
-      if (error) {
-        console.error('Error storing analytics:', error);
-      }
-    } catch (error) {
-      console.error('Error storing analytics:', error);
-    }
-  };
-
-  const storeRedditPosts = async (postsData: RedditPost[]) => {
-    try {
-      // Clear existing posts for this website
-      await supabase
-        .from('reddit_posts_analysis')
-        .delete()
-        .eq('website_url', websiteUrl);
-
-      // Store new posts
-      const dataToStore = postsData.map(post => ({
-        website_url: websiteUrl,
-        post_id: post.id,
-        title: post.title,
-        content: post.content,
-        subreddit: post.subreddit,
-        author: post.author,
-        score: post.score,
-        url: post.url,
-        ai_comment: post.aiComment
-      }));
-
-      const { error } = await supabase
-        .from('reddit_posts_analysis')
-        .insert(dataToStore);
-
-      if (error) {
-        console.error('Error storing posts:', error);
-      }
-    } catch (error) {
-      console.error('Error storing posts:', error);
     }
   };
 
   const fetchSubredditAnalytics = async (forceRegenerate = false) => {
-    // If not forcing regeneration, try to load stored data first
     if (!forceRegenerate) {
       const hasStoredData = await fetchStoredSubredditAnalytics();
       if (hasStoredData) {
-        return; // Use stored data
+        return;
       }
     }
 
-    setIsLoading(!forceRegenerate);
+    setIsLoadingAnalytics(true);
     if (forceRegenerate) setIsRegenerating(true);
 
     try {
-      // First get subreddit recommendations
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
@@ -237,10 +215,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
 
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        // Get top 3 subreddits
         const topSubreddits = analysisData.recommendations.slice(0, 3);
         
-        // Call Reddit analytics function
         const { data: analyticsData, error: analyticsError } = await supabase.functions.invoke('reddit-analytics', {
           body: { 
             subreddits: topSubreddits.map((r: any) => r.subreddit),
@@ -255,8 +231,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         const formattedAnalytics = analyticsData.analytics || [];
         setSubredditData(formattedAnalytics);
         
-        // Store the analytics data
-        await storeSubredditAnalytics(formattedAnalytics);
+        // Cache in session
+        SessionManager.setSessionData(`analytics_${websiteUrl}`, formattedAnalytics);
         
         if (forceRegenerate) {
           toast({
@@ -273,7 +249,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingAnalytics(false);
       setIsRegenerating(false);
     }
   };
@@ -281,11 +257,10 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const fetchRedditPosts = async (forceRegenerate = false) => {
     if (subredditData.length === 0) return;
     
-    // If not forcing regeneration, try to load stored data first
     if (!forceRegenerate) {
       const hasStoredPosts = await fetchStoredRedditPosts();
       if (hasStoredPosts) {
-        return; // Use stored data
+        return;
       }
     }
     
@@ -305,8 +280,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       const posts = data.posts || [];
       setRedditPosts(posts);
       
-      // Store the posts data
-      await storeRedditPosts(posts);
+      // Cache in session
+      SessionManager.setSessionData(`posts_${websiteUrl}`, posts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
       toast({
@@ -320,25 +295,35 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   };
 
   const handleSubredditDrilldown = (subreddit: string) => {
-    // Store the drilled down subreddit in sessionStorage
-    sessionStorage.setItem('selected_subreddit', subreddit);
+    SessionManager.setSessionData('selected_subreddit', subreddit);
     navigate('/research');
   };
 
   useEffect(() => {
     if (websiteUrl) {
-      fetchSubredditAnalytics();
+      fetchStoredSubredditAnalytics().then(hasData => {
+        if (!hasData) {
+          fetchSubredditAnalytics();
+        }
+      });
     }
   }, [websiteUrl]);
 
   useEffect(() => {
     if (subredditData.length > 0) {
-      fetchRedditPosts();
+      fetchStoredRedditPosts().then(hasData => {
+        if (!hasData) {
+          fetchRedditPosts();
+        }
+      });
     }
   }, [subredditData]);
 
   const handleRegenerate = async () => {
-    // Force regenerate both analytics and posts
+    // Clear cached data
+    SessionManager.removeSessionData(`analytics_${websiteUrl}`);
+    SessionManager.removeSessionData(`posts_${websiteUrl}`);
+    
     await fetchSubredditAnalytics(true);
     if (subredditData.length > 0) {
       await fetchRedditPosts(true);
@@ -382,13 +367,77 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     );
   };
 
+  const SubredditSkeleton = () => (
+    <Card className="relative overflow-hidden border-2">
+      <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
+        <CardTitle className="flex items-center justify-between">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-8 w-8 rounded" />
+        </CardTitle>
+        <Skeleton className="h-4 w-24" />
+      </CardHeader>
+      
+      <CardContent className="pt-4 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4" />
+              <div className="flex-1">
+                <Skeleton className="h-3 w-20 mb-1" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div>
+          <Skeleton className="h-3 w-24 mb-2" />
+          <div className="flex flex-wrap gap-1">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-6 w-16 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const PostSkeleton = () => (
+    <Card className="border hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between mb-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-8" />
+        </div>
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-5 w-3/4" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+        <div className="border-t pt-3">
+          <Skeleton className="h-3 w-32 mb-2" />
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+        <Skeleton className="h-8 w-full" />
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Reddit Analytics Dashboard</h1>
         <Button
           onClick={handleRegenerate}
-          disabled={isLoading || isRegenerating}
+          disabled={isLoadingAnalytics || isRegenerating}
           className="flex items-center gap-2"
         >
           <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
@@ -397,93 +446,99 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {subredditData.map((data, index) => (
-          <Card key={data.subreddit} className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
-              <CardTitle className="flex items-center justify-between">
-                <span className="text-xl font-bold">r/{data.subreddit}</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
-                    onClick={() => handleSubredditDrilldown(data.subreddit)}
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardTitle>
-              <div className="text-sm text-gray-600">
-                {formatNumber(data.subscribers)} members
-              </div>
-            </CardHeader>
-            
-            <CardContent className="pt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1">
-                      <div className="text-xs text-gray-500">Engagement Rate</div>
-                      <InfoTooltip kpiKey="engagement_rate" />
-                    </div>
-                    <div className="font-semibold">{(data.engagement_rate * 100).toFixed(2)}%</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1">
-                      <div className="text-xs text-gray-500">Visibility Score</div>
-                      <InfoTooltip kpiKey="visibility_score" />
-                    </div>
-                    <div className="font-semibold">{data.visibility_score.toFixed(0)}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-purple-600" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1">
-                      <div className="text-xs text-gray-500">Active Posters</div>
-                      <InfoTooltip kpiKey="active_posters" />
-                    </div>
-                    <div className="font-semibold">{data.active_posters}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-orange-600" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1">
-                      <div className="text-xs text-gray-500">Mod Strictness</div>
-                      <InfoTooltip kpiKey="strictness_index" />
-                    </div>
-                    <div className="font-semibold">{(data.strictness_index * 100).toFixed(0)}%</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-1 mb-2">
-                  <div className="text-xs text-gray-500">Top Content Themes</div>
-                  <InfoTooltip kpiKey="top_themes" />
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {data.top_themes.map((theme, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-1 bg-gray-100 text-xs rounded-full"
+        {isLoadingAnalytics ? (
+          [...Array(3)].map((_, index) => (
+            <SubredditSkeleton key={index} />
+          ))
+        ) : (
+          subredditData.map((data, index) => (
+            <Card key={data.subreddit} className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="text-xl font-bold">r/{data.subreddit}</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
+                      onClick={() => handleSubredditDrilldown(data.subreddit)}
                     >
-                      {theme.word} ({theme.count})
-                    </span>
-                  ))}
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardTitle>
+                <div className="text-sm text-gray-600">
+                  {formatNumber(data.subscribers)} members
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <div className="text-xs text-gray-500">Engagement Rate</div>
+                        <InfoTooltip kpiKey="engagement_rate" />
+                      </div>
+                      <div className="font-semibold">{(data.engagement_rate * 100).toFixed(2)}%</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <div className="text-xs text-gray-500">Visibility Score</div>
+                        <InfoTooltip kpiKey="visibility_score" />
+                      </div>
+                      <div className="font-semibold">{data.visibility_score.toFixed(0)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-purple-600" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <div className="text-xs text-gray-500">Active Posters</div>
+                        <InfoTooltip kpiKey="active_posters" />
+                      </div>
+                      <div className="font-semibold">{data.active_posters}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-orange-600" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <div className="text-xs text-gray-500">Mod Strictness</div>
+                        <InfoTooltip kpiKey="strictness_index" />
+                      </div>
+                      <div className="font-semibold">{(data.strictness_index * 100).toFixed(0)}%</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center gap-1 mb-2">
+                    <div className="text-xs text-gray-500">Top Content Themes</div>
+                    <InfoTooltip kpiKey="top_themes" />
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {data.top_themes.map((theme, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-gray-100 text-xs rounded-full"
+                      >
+                        {theme.word} ({theme.count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Reddit Posts Section */}
@@ -491,9 +546,10 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         <h2 className="text-2xl font-bold text-gray-900">Relevant Posts & AI Comments</h2>
         
         {isLoadingPosts ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-marketing-purple mx-auto mb-4"></div>
-            <p className="text-gray-500">Finding relevant posts...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, index) => (
+              <PostSkeleton key={index} />
+            ))}
           </div>
         ) : redditPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -533,14 +589,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         )}
       </div>
 
-      {isLoading && subredditData.length === 0 && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-marketing-purple mx-auto mb-4"></div>
-          <p className="text-gray-500">Analyzing subreddits...</p>
-        </div>
-      )}
-
-      {!isLoading && subredditData.length === 0 && (
+      {!isLoadingAnalytics && subredditData.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No subreddit data available. Try regenerating the analysis.</p>
         </div>
