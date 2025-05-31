@@ -1,4 +1,3 @@
-
 interface SessionData {
   [key: string]: any;
 }
@@ -99,6 +98,26 @@ export class SessionManager {
       const [name] = cookie.split('=');
       if (name.trim().startsWith(this.SESSION_KEY)) {
         this.deleteCookie(name.trim());
+      }
+    });
+  }
+
+  // Clear chat data for other websites (keep current website data)
+  static clearOtherWebsiteChats(currentWebsiteUrl: string): void {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith(`${this.SESSION_KEY}_chat_`) && !key.includes(currentWebsiteUrl)) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // Also clear cookies for other website chats
+    const cookies = document.cookie.split(';');
+    cookies.forEach(cookie => {
+      const [name] = cookie.split('=');
+      const trimmedName = name.trim();
+      if (trimmedName.startsWith(`${this.SESSION_KEY}_chat_`) && !trimmedName.includes(currentWebsiteUrl)) {
+        this.deleteCookie(trimmedName);
       }
     });
   }
