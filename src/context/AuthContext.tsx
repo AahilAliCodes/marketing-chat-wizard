@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 type AuthContextType = {
   session: Session | null;
@@ -90,10 +91,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      
+      // Clear any session data
+      sessionStorage.clear();
+      localStorage.removeItem('supabase.auth.token');
+      
       toast({
         title: "Signed out",
-        description: "You have been signed out"
+        description: "You have been signed out successfully"
       });
+      
+      // Redirect to home page after successful sign out
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         variant: "destructive",
