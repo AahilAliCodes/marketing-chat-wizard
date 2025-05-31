@@ -34,20 +34,12 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY is not configured in the server");
     }
 
-    // If forceRegenerate is true, delete existing recommendations and generate new ones
+    // If forceRegenerate is true, generate exactly 3 new unique recommendations
     if (forceRegenerate) {
-      console.log('Force regenerating recommendations, deleting existing ones');
-      const { error: deleteError } = await supabase
-        .from('subreddit_recommendations')
-        .delete()
-        .eq('website_url', websiteUrl);
-        
-      if (deleteError) {
-        console.error('Error deleting existing recommendations:', deleteError);
-      }
+      console.log('Force regenerating recommendations with excluded subreddits:', excludeSubreddits);
       
-      // Generate new recommendations with exclusions
-      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits);
+      // Generate new recommendations with exclusions, requesting exactly 3
+      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 3);
       
       // Store the new recommendations in Supabase
       const recommendationsToStore = recommendations.map((rec: any) => ({
@@ -66,31 +58,15 @@ serve(async (req) => {
         console.log('Successfully stored', recommendationsToStore.length, 'new recommendations');
       }
       
-      // Fetch the stored recommendations to return with their IDs
-      const { data: storedRecommendations, error: retrieveError } = await supabase
-        .from('subreddit_recommendations')
-        .select('*')
-        .eq('website_url', websiteUrl);
-        
-      if (retrieveError) {
-        console.error('Error retrieving stored recommendations:', retrieveError);
-        // If we can't retrieve the stored ones, just return the generated ones with fake IDs
-        return new Response(
-          JSON.stringify({ 
-            recommendations: recommendations.map((rec: any, index: number) => ({
-              id: `temp-${index}`,
-              subreddit: rec.name,
-              reason: rec.reason
-            }))
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+      // Return the new recommendations with generated IDs
+      const formattedRecommendations = recommendations.map((rec: any, index: number) => ({
+        id: `new-${Date.now()}-${index}`,
+        subreddit: rec.name,
+        reason: rec.reason
+      }));
       
       return new Response(
-        JSON.stringify({ recommendations: storedRecommendations }),
+        JSON.stringify({ recommendations: formattedRecommendations }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
@@ -118,8 +94,8 @@ serve(async (req) => {
       );
     }
     
-    // Otherwise generate new recommendations
-    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits);
+    // Otherwise generate new recommendations (initial load - 5 recommendations)
+    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 5);
     
     // Store the recommendations in Supabase
     const recommendationsToStore = recommendations.map((rec: any) => ({
@@ -179,11 +155,11 @@ serve(async (req) => {
   }
 });
 
-async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = []) {
+async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 5) {
   try {
     const excludeText = excludeSubreddits.length > 0 
-      ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all 5 recommendations are completely different from these excluded subreddits.`
-      : '';
+      ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all ${requestCount} recommendations are completely different from these excluded subreddits. Generate ${requestCount} completely NEW and UNIQUE subreddit recommendations.`
+      : `\n\nGenerate exactly ${requestCount} unique subreddit recommendations.`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -196,15 +172,15 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
         messages: [
           {
             role: "system",
-            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend 5 subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix.${excludeText}`
+            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend exactly ${requestCount} subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix.${excludeText}`
           },
           {
             role: "user",
-            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend 5 subreddits where this business can engage effectively. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
+            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend exactly ${requestCount} subreddits where this business can engage effectively. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
           }
         ],
-        temperature: 0.7,
-        max_tokens: 1200,
+        temperature: 0.8,
+        max_tokens: 1500,
         response_format: { "type": "json_object" }
       }),
     });
@@ -222,7 +198,11 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
       throw new Error("Failed to generate valid subreddit recommendations");
     }
     
-    return parsed.subreddits;
+    // Ensure we return exactly the requested count
+    const recommendations = parsed.subreddits.slice(0, requestCount);
+    console.log(`Generated ${recommendations.length} recommendations (requested: ${requestCount})`);
+    
+    return recommendations;
   } catch (error) {
     console.error("Error generating subreddit recommendations:", error);
     throw error;

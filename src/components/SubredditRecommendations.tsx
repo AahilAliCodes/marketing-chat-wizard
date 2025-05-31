@@ -24,8 +24,27 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [previousSubreddits, setPreviousSubreddits] = useState<string[]>([]);
+  const [allPreviousSubreddits, setAllPreviousSubreddits] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const fetchAllPreviousSubreddits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subreddit_recommendations')
+        .select('subreddit')
+        .eq('website_url', websiteUrl);
+      
+      if (error) {
+        console.error('Error fetching previous subreddits:', error);
+        return [];
+      }
+      
+      return data?.map(rec => rec.subreddit) || [];
+    } catch (error) {
+      console.error('Error in fetchAllPreviousSubreddits:', error);
+      return [];
+    }
+  };
 
   const fetchSubreddits = async (forceRegenerate = false) => {
     if (!websiteUrl) return;
@@ -35,13 +54,16 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     setError(null);
     
     try {
-      // Call the edge function - it will check for existing recommendations
-      // and only generate new ones if needed (or if forceRegenerate is true)
+      // Get all previously recommended subreddits for this website
+      const previousSubreddits = await fetchAllPreviousSubreddits();
+      setAllPreviousSubreddits(previousSubreddits);
+      
+      // Call the edge function
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          forceRegenerate, // Pass this flag to the edge function
-          excludeSubreddits: forceRegenerate ? previousSubreddits : [] // Exclude previous subreddits when regenerating
+          forceRegenerate,
+          excludeSubreddits: forceRegenerate ? previousSubreddits : []
         }
       });
       
@@ -52,14 +74,10 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
         setRecommendations(analysisData.recommendations);
         
-        // Track all subreddits that have been recommended
-        const newSubreddits = analysisData.recommendations.map((rec: SubredditRecommendation) => rec.subreddit);
-        setPreviousSubreddits(prev => [...new Set([...prev, ...newSubreddits])]);
-        
         if (forceRegenerate) {
           toast({
             title: 'Success',
-            description: 'New unique subreddit recommendations have been generated',
+            description: `Generated ${analysisData.recommendations.length} new unique subreddit recommendations`,
           });
         }
       } else {
@@ -111,7 +129,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       <CardContent className="pt-4">
         {(isLoading || isRegenerating) ? (
           <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Skeleton className="h-8 w-full" />
               </div>
@@ -150,6 +168,11 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
         {recommendations.length > 0 && (
           <div className="mt-4 pt-4 border-t text-sm text-gray-500">
             <p>Click on any subreddit to open it in a new tab.</p>
+            {allPreviousSubreddits.length > 0 && (
+              <p className="mt-1">
+                Previously recommended: {allPreviousSubreddits.length} subreddit{allPreviousSubreddits.length !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
         )}
       </CardContent>
