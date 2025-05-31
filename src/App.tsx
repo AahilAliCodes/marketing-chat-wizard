@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import Research from "./pages/Research";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import SharedChat from "./pages/SharedChat";
@@ -26,6 +27,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/research" element={<Research />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/shared-chat/:chatId" element={<SharedChat />} />
               <Route path="/analysis-error" element={<AnalysisError />} />

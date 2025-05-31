@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface SubredditData {
   subreddit: string;
@@ -66,6 +66,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchSubredditAnalytics = async (forceRegenerate = false) => {
     setIsLoading(!forceRegenerate);
@@ -150,6 +151,12 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     }
   };
 
+  const handleSubredditDrilldown = (subreddit: string) => {
+    // Store the drilled down subreddit in sessionStorage
+    sessionStorage.setItem('selected_subreddit', subreddit);
+    navigate('/research');
+  };
+
   useEffect(() => {
     if (websiteUrl) {
       fetchSubredditAnalytics();
@@ -214,13 +221,35 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
             <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
               <CardTitle className="flex items-center justify-between">
                 <span className="text-xl font-bold">r/{data.subreddit}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
+                      >
+                        <Info className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md p-4">
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-lg">Subreddit KPIs Overview</h4>
+                        <p className="text-sm">This card shows key performance indicators for r/{data.subreddit} including engagement rates, visibility scores, active users, and moderation strictness.</p>
+                        <p className="text-xs text-gray-600">Click the arrow to drill down into detailed analytics for this subreddit.</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
+                    onClick={() => handleSubredditDrilldown(data.subreddit)}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardTitle>
               <div className="text-sm text-gray-600">
                 {formatNumber(data.subscribers)} members
