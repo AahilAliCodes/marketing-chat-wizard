@@ -22,16 +22,79 @@ serve(async (req) => {
   }
 
   try {
-    const { websiteUrl, campaignType = "General" } = await req.json();
+    const { websiteUrl, campaignType = "General", forceRegenerate = false, excludeSubreddits = [] } = await req.json();
     
     if (!websiteUrl) {
       throw new Error("Website URL is required");
     }
 
-    console.log(`Analyzing subreddits for: ${websiteUrl}, campaign type: ${campaignType}`);
+    console.log(`Analyzing subreddits for: ${websiteUrl}, campaign type: ${campaignType}, forceRegenerate: ${forceRegenerate}`);
     
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured in the server");
+    }
+
+    // If forceRegenerate is true, delete existing recommendations and generate new ones
+    if (forceRegenerate) {
+      console.log('Force regenerating recommendations, deleting existing ones');
+      const { error: deleteError } = await supabase
+        .from('subreddit_recommendations')
+        .delete()
+        .eq('website_url', websiteUrl);
+        
+      if (deleteError) {
+        console.error('Error deleting existing recommendations:', deleteError);
+      }
+      
+      // Generate new recommendations with exclusions
+      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits);
+      
+      // Store the new recommendations in Supabase
+      const recommendationsToStore = recommendations.map((rec: any) => ({
+        website_url: websiteUrl,
+        subreddit: rec.name,
+        reason: rec.reason,
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('subreddit_recommendations')
+        .insert(recommendationsToStore);
+        
+      if (insertError) {
+        console.error('Error storing new recommendations:', insertError);
+      } else {
+        console.log('Successfully stored', recommendationsToStore.length, 'new recommendations');
+      }
+      
+      // Fetch the stored recommendations to return with their IDs
+      const { data: storedRecommendations, error: retrieveError } = await supabase
+        .from('subreddit_recommendations')
+        .select('*')
+        .eq('website_url', websiteUrl);
+        
+      if (retrieveError) {
+        console.error('Error retrieving stored recommendations:', retrieveError);
+        // If we can't retrieve the stored ones, just return the generated ones with fake IDs
+        return new Response(
+          JSON.stringify({ 
+            recommendations: recommendations.map((rec: any, index: number) => ({
+              id: `temp-${index}`,
+              subreddit: rec.name,
+              reason: rec.reason
+            }))
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ recommendations: storedRecommendations }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Check if we already have recommendations for this website
@@ -56,7 +119,7 @@ serve(async (req) => {
     }
     
     // Otherwise generate new recommendations
-    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType);
+    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits);
     
     // Store the recommendations in Supabase
     const recommendationsToStore = recommendations.map((rec: any) => ({
@@ -76,16 +139,22 @@ serve(async (req) => {
     }
     
     // Fetch the stored recommendations to return with their IDs
-    const { data: storedRecommendations, error: retriveError } = await supabase
+    const { data: storedRecommendations, error: retrieveError } = await supabase
       .from('subreddit_recommendations')
       .select('*')
       .eq('website_url', websiteUrl);
       
-    if (retriveError) {
-      console.error('Error retrieving stored recommendations:', retriveError);
+    if (retrieveError) {
+      console.error('Error retrieving stored recommendations:', retrieveError);
       // If we can't retrieve the stored ones, just return the generated ones
       return new Response(
-        JSON.stringify({ recommendations }),
+        JSON.stringify({ 
+          recommendations: recommendations.map((rec: any, index: number) => ({
+            id: `temp-${index}`,
+            subreddit: rec.name,
+            reason: rec.reason
+          }))
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
@@ -110,8 +179,12 @@ serve(async (req) => {
   }
 });
 
-async function generateSubredditRecommendations(websiteUrl: string, campaignType: string) {
+async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = []) {
   try {
+    const excludeText = excludeSubreddits.length > 0 
+      ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all 5 recommendations are completely different from these excluded subreddits.`
+      : '';
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -123,11 +196,11 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
         messages: [
           {
             role: "system",
-            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend 5 subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix.`
+            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend 5 subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix.${excludeText}`
           },
           {
             role: "user",
-            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend 5 subreddits where this business can engage effectively. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.`
+            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend 5 subreddits where this business can engage effectively. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
           }
         ],
         temperature: 0.7,

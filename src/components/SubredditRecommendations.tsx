@@ -24,6 +24,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [previousSubreddits, setPreviousSubreddits] = useState<string[]>([]);
   const { toast } = useToast();
 
   const fetchSubreddits = async (forceRegenerate = false) => {
@@ -39,7 +40,8 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          forceRegenerate // Pass this flag to the edge function
+          forceRegenerate, // Pass this flag to the edge function
+          excludeSubreddits: forceRegenerate ? previousSubreddits : [] // Exclude previous subreddits when regenerating
         }
       });
       
@@ -50,10 +52,14 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
         setRecommendations(analysisData.recommendations);
         
+        // Track all subreddits that have been recommended
+        const newSubreddits = analysisData.recommendations.map((rec: SubredditRecommendation) => rec.subreddit);
+        setPreviousSubreddits(prev => [...new Set([...prev, ...newSubreddits])]);
+        
         if (forceRegenerate) {
           toast({
             title: 'Success',
-            description: 'New subreddit recommendations have been generated',
+            description: 'New unique subreddit recommendations have been generated',
           });
         }
       } else {
