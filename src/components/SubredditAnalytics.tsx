@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -188,27 +189,31 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const InfoTooltip = ({ kpiKey }: { kpiKey: keyof typeof KPI_EXPLANATIONS }) => {
     const kpi = KPI_EXPLANATIONS[kpiKey];
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent className="max-w-md p-4">
-          <div className="space-y-3">
-            <h4 className="font-semibold text-lg">{kpi.title}</h4>
-            <div>
-              <p className="text-sm font-medium mb-1">{kpi.description}</p>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button className="inline-flex items-center justify-center">
+              <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-md p-4" side="top">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-lg">{kpi.title}</h4>
+              <div>
+                <p className="text-sm font-medium mb-1">{kpi.description}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Good Score Range:</p>
+                <p className="text-xs whitespace-pre-line text-gray-700">{kpi.goodRange}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Significance:</p>
+                <p className="text-xs text-gray-600">{kpi.significance}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium">Good Score Range:</p>
-              <p className="text-xs whitespace-pre-line text-gray-700">{kpi.goodRange}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Significance:</p>
-              <p className="text-xs text-gray-600">{kpi.significance}</p>
-            </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   };
 
