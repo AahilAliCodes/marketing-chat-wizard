@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { SessionManager } from '@/utils/sessionManager';
 
 type AuthContextType = {
   session: Session | null;
@@ -90,9 +90,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // Clear local state first
+      setSession(null);
+      setUser(null);
+      
+      // Clear session manager data
+      SessionManager.clearAllSessionData();
+      
+      // Sign out from Supabase
       await supabase.auth.signOut();
       
-      // Clear any session data
+      // Clear any remaining session data
       sessionStorage.clear();
       localStorage.removeItem('supabase.auth.token');
       
@@ -101,9 +109,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You have been signed out successfully"
       });
       
-      // Redirect to home page after successful sign out
-      window.location.href = '/';
+      // Small delay to ensure state is updated before redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error: any) {
+      console.error('Sign out error:', error);
       toast({
         variant: "destructive",
         title: "Error signing out",

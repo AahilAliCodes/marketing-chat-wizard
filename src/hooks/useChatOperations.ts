@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -11,11 +11,26 @@ export const useChatOperations = () => {
   const [channels, setChannels] = useState<ChannelType[]>(defaultChannels);
   const [activeChannel, setActiveChannel] = useState<string>('channel-1');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
+  // Reset to default state when user signs out
+  useEffect(() => {
+    if (!user && !session) {
+      setChannels(defaultChannels);
+      setActiveChannel('channel-1');
+      setIsLoading(false);
+    }
+  }, [user, session]);
+
   const loadUserChannels = async () => {
-    if (!user) return;
+    // Only attempt to load if user is authenticated
+    if (!user || !session) {
+      console.log('User not authenticated, using default channels');
+      setChannels(defaultChannels);
+      setActiveChannel('channel-1');
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -24,22 +39,36 @@ export const useChatOperations = () => {
       if (userChannels && userChannels.length > 0) {
         // Load all user channels with their messages
         const userChannelsWithMessages = await Promise.all(
-          userChannels.map(async (channel) => await getFullChannel(channel.id))
+          userChannels.map(async (channel) => {
+            const fullChannel = await getFullChannel(channel.id);
+            return fullChannel;
+          })
         );
         
-        // Combine user channels with default channels
-        setChannels([...userChannelsWithMessages, ...defaultChannels]);
+        // Filter out any null channels
+        const validChannels = userChannelsWithMessages.filter(channel => channel !== null) as ChannelType[];
         
-        // Set the first user channel as active
-        setActiveChannel(userChannelsWithMessages[0].id);
+        if (validChannels.length > 0) {
+          // Combine user channels with default channels
+          setChannels([...validChannels, ...defaultChannels]);
+          
+          // Set the first user channel as active
+          setActiveChannel(validChannels[0].id);
+        } else {
+          // No valid user channels, use defaults
+          setChannels(defaultChannels);
+          setActiveChannel('channel-1');
+        }
+      } else {
+        // No user channels, use defaults
+        setChannels(defaultChannels);
+        setActiveChannel('channel-1');
       }
     } catch (error) {
       console.error('Error loading user channels:', error);
-      toast({
-        variant: "destructive",
-        title: "Error loading channels",
-        description: "There was a problem loading your saved chats."
-      });
+      // On error, fall back to default channels
+      setChannels(defaultChannels);
+      setActiveChannel('channel-1');
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +97,7 @@ export const useChatOperations = () => {
   };
 
   const saveCurrentChannel = async () => {
-    if (!user) {
+    if (!user || !session) {
       toast({
         title: "Authentication required",
         description: "Please sign in to save chats"

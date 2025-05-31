@@ -19,14 +19,22 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const chatOps = useChatOperations();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
-  // Load user channels when they log in
+  // Load user channels when they log in, but only if authenticated
   useEffect(() => {
-    if (user) {
+    if (user && session) {
       chatOps.loadUserChannels();
     }
-  }, [user, chatOps.loadUserChannels]);
+  }, [user, session]);
+
+  // Reset chat state when user signs out
+  useEffect(() => {
+    if (!user && !session) {
+      // User signed out, reset to default state
+      // The useChatOperations hook will handle resetting to default channels
+    }
+  }, [user, session]);
 
   return (
     <ChatContext.Provider value={chatOps}>
