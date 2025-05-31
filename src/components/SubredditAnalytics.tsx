@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,7 +93,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         return true;
       }
 
-      // Then check database
+      // Then check database - use maybeSingle to avoid 406 errors when no data exists
       const { data: storedAnalytics, error } = await supabase
         .from('reddit_subreddit_analytics')
         .select('*')
@@ -102,7 +101,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw new Error(error.message);
+        console.error('Database error fetching analytics:', error);
+        setIsLoadingAnalytics(false);
+        return false;
       }
 
       if (storedAnalytics && storedAnalytics.length > 0) {
@@ -158,7 +159,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw new Error(error.message);
+        console.error('Database error fetching posts:', error);
+        setIsLoadingPosts(false);
+        return false;
       }
 
       if (storedPosts && storedPosts.length > 0) {
@@ -203,6 +206,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     if (forceRegenerate) setIsRegenerating(true);
 
     try {
+      console.log('Generating new subreddit analytics for:', websiteUrl);
+      
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
@@ -266,6 +271,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     
     setIsLoadingPosts(true);
     try {
+      console.log('Generating new Reddit posts for:', websiteUrl);
+      
       const { data, error } = await supabase.functions.invoke('fetch-reddit-posts', {
         body: { 
           subreddits: subredditData.map(s => s.subreddit),

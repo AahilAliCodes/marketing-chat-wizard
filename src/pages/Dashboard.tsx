@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Topbar from '@/components/Topbar';
 import SubredditAnalytics from '@/components/SubredditAnalytics';
@@ -49,12 +50,17 @@ const Dashboard = () => {
           let existingAnalysis = SessionManager.getSessionData(`analysis_${state.websiteUrl}`);
           
           if (!existingAnalysis) {
-            // Check database for existing analysis
-            const { data: dbAnalysis } = await supabase
+            // Check database for existing analysis - use maybeSingle to avoid 406 errors
+            const { data: dbAnalysis, error: dbError } = await supabase
               .from('website_analyses')
               .select('*')
               .eq('website_url', state.websiteUrl)
-              .single();
+              .maybeSingle();
+            
+            if (dbError) {
+              console.error('Database query error:', dbError);
+              // Continue with analysis even if database check fails
+            }
             
             if (dbAnalysis) {
               existingAnalysis = dbAnalysis;
@@ -73,6 +79,7 @@ const Dashboard = () => {
             console.log('Using existing analysis:', existingAnalysis);
           } else {
             // Website not yet analyzed, call the edge function
+            console.log('Starting new website analysis for:', state.websiteUrl);
             const { data, error } = await supabase.functions.invoke('analyze-website', {
               body: { url: state.websiteUrl },
             });
@@ -89,6 +96,8 @@ const Dashboard = () => {
               title: 'Analysis Complete',
               description: 'Website has been analyzed and ready for Reddit analytics',
             });
+            
+            console.log('Website analysis completed successfully');
           }
           
         } catch (error: any) {
@@ -138,13 +147,17 @@ const Dashboard = () => {
           if (sessionAnalysis && sessionAnalysis.websiteUrl) {
             setWebsiteUrl(sessionAnalysis.websiteUrl);
           } else {
-            // Fallback to database if no session data
-            const { data: recentAnalysis } = await supabase
+            // Fallback to database if no session data - use maybeSingle to avoid 406 errors
+            const { data: recentAnalysis, error } = await supabase
               .from('website_analyses')
               .select('website_url')
               .order('created_at', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
+            
+            if (error) {
+              console.error('Error fetching recent website:', error);
+            }
             
             if (recentAnalysis) {
               setWebsiteUrl(recentAnalysis.website_url);
