@@ -35,27 +35,33 @@ interface SubredditAnalyticsProps {
 const KPI_EXPLANATIONS = {
   engagement_rate: {
     title: "Engagement Rate",
-    description: "Measures how active and responsive users are. High engagement means posts start discussions and people care.",
+    description: "Metric Type: Percent or decimal (e.g., 0.12 or 12%)",
     goodRange: "Low (<5%) – Lurker-heavy subreddit\nMedium (5–15%) – Decent activity\nHigh (>15%) – Very interactive audience",
-    significance: "If engagement is low, posts may get ignored, even if the sub looks big."
+    significance: "Measures how active and responsive users are. High engagement means posts start discussions and people care. If engagement is low, posts may get ignored, even if the sub looks big."
   },
   visibility_score: {
     title: "Post Visibility Score",
-    description: "Tells you how likely your post is to reach the top. A high score means Reddit's algorithm amplifies content and users respond positively.",
+    description: "Metric Type: Integer or scaled index (e.g., 500–2000+)",
     goodRange: "<500 – Posts get ignored\n500–1500 – Moderate reach\n1500+ – Highly visible posts",
-    significance: "A green light for marketing potential when high."
+    significance: "Tells you how likely your post is to reach the top. A high score means Reddit's algorithm amplifies content and users respond positively — a green light for marketing potential."
   },
   active_posters: {
     title: "Daily Active Posters",
-    description: "Shows how much fresh content is being created. You want to market in communities where new conversations happen daily.",
+    description: "Metric Type: Integer (e.g., 30 posters/day)",
     goodRange: "<10/day – Stale community\n10–100/day – Growing/active\n100+/day – Highly active sub",
-    significance: "Not where the same 5 users post once a week."
+    significance: "Shows how much fresh content is being created. You want to market in communities where new conversations happen daily — not where the same 5 users post once a week."
   },
   strictness_index: {
     title: "Moderator Strictness Index",
-    description: "Measures how harsh the mods are. A high index means posts — even helpful ones — can be deleted easily.",
+    description: "Metric Type: Ratio (e.g., 0.25 = 25% of posts removed)",
     goodRange: "<10% – Lenient/moderate modding\n10–30% – Cautious modding\n>30% – Highly strict; risky for marketers",
-    significance: "Essential for avoiding wasted effort or account bans."
+    significance: "Measures how harsh the mods are. A high index means posts — even helpful ones — can be deleted easily. Essential for avoiding wasted effort or account bans."
+  },
+  top_themes: {
+    title: "Top Content Themes",
+    description: "Metric Type: Keywords or topic clusters (e.g., \"weight loss\", \"testimonials\", \"supplements\")\n\nHow It's Extracted: NLP on top 100 posts in last 3 months",
+    goodRange: "Clear, repeated patterns (e.g., same 3–5 themes dominate)\nMatch between themes and your product's messaging",
+    significance: "Helps you blend in natively. If your comment mirrors what the sub already discusses, it gets accepted and even upvoted. Marketing works best when it's on-topic."
   }
 };
 
@@ -186,15 +192,20 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         <TooltipTrigger asChild>
           <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
         </TooltipTrigger>
-        <TooltipContent className="max-w-sm p-4">
-          <div className="space-y-2">
-            <h4 className="font-semibold">{kpi.title}</h4>
-            <p className="text-sm">{kpi.description}</p>
+        <TooltipContent className="max-w-md p-4">
+          <div className="space-y-3">
+            <h4 className="font-semibold text-lg">{kpi.title}</h4>
+            <div>
+              <p className="text-sm font-medium mb-1">{kpi.description}</p>
+            </div>
             <div>
               <p className="text-sm font-medium">Good Score Range:</p>
-              <p className="text-xs whitespace-pre-line">{kpi.goodRange}</p>
+              <p className="text-xs whitespace-pre-line text-gray-700">{kpi.goodRange}</p>
             </div>
-            <p className="text-xs text-gray-600">{kpi.significance}</p>
+            <div>
+              <p className="text-sm font-medium">Significance:</p>
+              <p className="text-xs text-gray-600">{kpi.significance}</p>
+            </div>
           </div>
         </TooltipContent>
       </Tooltip>
@@ -222,25 +233,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
               <CardTitle className="flex items-center justify-between">
                 <span className="text-xl font-bold">r/{data.subreddit}</span>
                 <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-1 h-8 w-8 hover:bg-marketing-purple/20"
-                      >
-                        <Info className="h-4 w-4 text-gray-500" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md p-4">
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg">Subreddit KPIs Overview</h4>
-                        <p className="text-sm">This card shows key performance indicators for r/{data.subreddit} including engagement rates, visibility scores, active users, and moderation strictness.</p>
-                        <p className="text-xs text-gray-600">Click the arrow to drill down into detailed analytics for this subreddit.</p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -304,7 +296,10 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
               </div>
               
               <div>
-                <div className="text-xs text-gray-500 mb-2">Top Content Themes</div>
+                <div className="flex items-center gap-1 mb-2">
+                  <div className="text-xs text-gray-500">Top Content Themes</div>
+                  <InfoTooltip kpiKey="top_themes" />
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {data.top_themes.map((theme, i) => (
                     <span
