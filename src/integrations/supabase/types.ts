@@ -143,6 +143,93 @@ export type Database = {
         }
         Relationships: []
       }
+      reddit_posts_analysis: {
+        Row: {
+          ai_comment: string
+          author: string
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          score: number
+          subreddit: string
+          title: string
+          updated_at: string
+          url: string
+          website_url: string
+        }
+        Insert: {
+          ai_comment: string
+          author: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id: string
+          score?: number
+          subreddit: string
+          title: string
+          updated_at?: string
+          url: string
+          website_url: string
+        }
+        Update: {
+          ai_comment?: string
+          author?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          score?: number
+          subreddit?: string
+          title?: string
+          updated_at?: string
+          url?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
+      reddit_subreddit_analytics: {
+        Row: {
+          active_posters: number
+          created_at: string
+          engagement_rate: number
+          id: string
+          strictness_index: number
+          subreddit: string
+          subscribers: number
+          top_themes: Json
+          updated_at: string
+          visibility_score: number
+          website_url: string
+        }
+        Insert: {
+          active_posters?: number
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          strictness_index?: number
+          subreddit: string
+          subscribers?: number
+          top_themes?: Json
+          updated_at?: string
+          visibility_score?: number
+          website_url: string
+        }
+        Update: {
+          active_posters?: number
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          strictness_index?: number
+          subreddit?: string
+          subscribers?: number
+          top_themes?: Json
+          updated_at?: string
+          visibility_score?: number
+          website_url?: string
+        }
+        Relationships: []
+      }
       session: {
         Row: {
           created_at: string

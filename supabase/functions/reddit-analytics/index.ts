@@ -1,6 +1,8 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +12,11 @@ const corsHeaders = {
 
 const REDDIT_CLIENT_ID = Deno.env.get('REDDIT_CLIENT_ID');
 const REDDIT_SECRET_KEY = Deno.env.get('REDDIT_SECRET_KEY');
+
+// Create a Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -21,11 +28,44 @@ serve(async (req) => {
   }
 
   try {
-    const { subreddits } = await req.json();
+    const { subreddits, websiteUrl } = await req.json();
 
     if (!REDDIT_CLIENT_ID || !REDDIT_SECRET_KEY) {
       throw new Error('Reddit API credentials not configured');
     }
+
+    // Check if we have stored analytics for this website that are recent (within 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: existingAnalytics, error: fetchError } = await supabase
+      .from('reddit_subreddit_analytics')
+      .select('*')
+      .eq('website_url', websiteUrl)
+      .gte('created_at', oneDayAgo);
+
+    if (fetchError) {
+      console.error('Error fetching existing analytics:', fetchError);
+    }
+
+    // If we have recent analytics data, return it
+    if (existingAnalytics && existingAnalytics.length > 0) {
+      console.log('Found existing analytics data for', websiteUrl);
+      const formattedAnalytics = existingAnalytics.map(item => ({
+        subreddit: item.subreddit,
+        engagement_rate: parseFloat(item.engagement_rate.toString()),
+        visibility_score: parseFloat(item.visibility_score.toString()),
+        active_posters: item.active_posters,
+        strictness_index: parseFloat(item.strictness_index.toString()),
+        top_themes: item.top_themes,
+        subscribers: item.subscribers
+      }));
+
+      return new Response(JSON.stringify({ analytics: formattedAnalytics }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('No recent analytics found, generating new data for', websiteUrl);
 
     // Get Reddit access token
     const authResponse = await fetch('https://www.reddit.com/api/v1/access_token', {
@@ -136,6 +176,28 @@ serve(async (req) => {
         }
       })
     );
+
+    // Store the analytics in the database
+    const analyticsToStore = analytics.map(item => ({
+      website_url: websiteUrl,
+      subreddit: item.subreddit,
+      engagement_rate: item.engagement_rate,
+      visibility_score: item.visibility_score,
+      active_posters: item.active_posters,
+      strictness_index: item.strictness_index,
+      top_themes: item.top_themes,
+      subscribers: item.subscribers
+    }));
+
+    const { error: insertError } = await supabase
+      .from('reddit_subreddit_analytics')
+      .insert(analyticsToStore);
+
+    if (insertError) {
+      console.error('Error storing analytics:', insertError);
+    } else {
+      console.log('Successfully stored analytics for', websiteUrl);
+    }
 
     return new Response(JSON.stringify({ analytics }), {
       status: 200,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,7 @@ interface SubredditAnalyticsProps {
   websiteUrl: string;
 }
 
+// ... keep existing code (KPI_EXPLANATIONS constant)
 const KPI_EXPLANATIONS = {
   engagement_rate: {
     title: "Engagement Rate",
@@ -75,7 +75,151 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const fetchStoredSubredditAnalytics = async () => {
+    try {
+      // First check if we have stored analytics for this website
+      const { data: storedAnalytics, error } = await supabase
+        .from('reddit_subreddit_analytics')
+        .select('*')
+        .eq('website_url', websiteUrl)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (storedAnalytics && storedAnalytics.length > 0) {
+        // Convert stored data to the expected format
+        const formattedData = storedAnalytics.map(item => ({
+          subreddit: item.subreddit,
+          engagement_rate: parseFloat(item.engagement_rate.toString()),
+          visibility_score: parseFloat(item.visibility_score.toString()),
+          active_posters: item.active_posters,
+          strictness_index: parseFloat(item.strictness_index.toString()),
+          top_themes: item.top_themes as Array<{ word: string; count: number }>,
+          subscribers: item.subscribers
+        }));
+
+        setSubredditData(formattedData);
+        return true; // Data found and loaded
+      }
+
+      return false; // No stored data found
+    } catch (error) {
+      console.error('Error fetching stored analytics:', error);
+      return false;
+    }
+  };
+
+  const fetchStoredRedditPosts = async () => {
+    try {
+      const { data: storedPosts, error } = await supabase
+        .from('reddit_posts_analysis')
+        .select('*')
+        .eq('website_url', websiteUrl)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (storedPosts && storedPosts.length > 0) {
+        const formattedPosts = storedPosts.map(post => ({
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          subreddit: post.subreddit,
+          author: post.author,
+          score: post.score,
+          url: post.url,
+          aiComment: post.ai_comment
+        }));
+
+        setRedditPosts(formattedPosts);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error fetching stored posts:', error);
+      return false;
+    }
+  };
+
+  const storeSubredditAnalytics = async (analyticsData: SubredditData[]) => {
+    try {
+      // Clear existing analytics for this website
+      await supabase
+        .from('reddit_subreddit_analytics')
+        .delete()
+        .eq('website_url', websiteUrl);
+
+      // Store new analytics
+      const dataToStore = analyticsData.map(item => ({
+        website_url: websiteUrl,
+        subreddit: item.subreddit,
+        engagement_rate: item.engagement_rate,
+        visibility_score: item.visibility_score,
+        active_posters: item.active_posters,
+        strictness_index: item.strictness_index,
+        top_themes: item.top_themes,
+        subscribers: item.subscribers
+      }));
+
+      const { error } = await supabase
+        .from('reddit_subreddit_analytics')
+        .insert(dataToStore);
+
+      if (error) {
+        console.error('Error storing analytics:', error);
+      }
+    } catch (error) {
+      console.error('Error storing analytics:', error);
+    }
+  };
+
+  const storeRedditPosts = async (postsData: RedditPost[]) => {
+    try {
+      // Clear existing posts for this website
+      await supabase
+        .from('reddit_posts_analysis')
+        .delete()
+        .eq('website_url', websiteUrl);
+
+      // Store new posts
+      const dataToStore = postsData.map(post => ({
+        website_url: websiteUrl,
+        post_id: post.id,
+        title: post.title,
+        content: post.content,
+        subreddit: post.subreddit,
+        author: post.author,
+        score: post.score,
+        url: post.url,
+        ai_comment: post.aiComment
+      }));
+
+      const { error } = await supabase
+        .from('reddit_posts_analysis')
+        .insert(dataToStore);
+
+      if (error) {
+        console.error('Error storing posts:', error);
+      }
+    } catch (error) {
+      console.error('Error storing posts:', error);
+    }
+  };
+
   const fetchSubredditAnalytics = async (forceRegenerate = false) => {
+    // If not forcing regeneration, try to load stored data first
+    if (!forceRegenerate) {
+      const hasStoredData = await fetchStoredSubredditAnalytics();
+      if (hasStoredData) {
+        return; // Use stored data
+      }
+    }
+
     setIsLoading(!forceRegenerate);
     if (forceRegenerate) setIsRegenerating(true);
 
@@ -99,7 +243,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         // Call Reddit analytics function
         const { data: analyticsData, error: analyticsError } = await supabase.functions.invoke('reddit-analytics', {
           body: { 
-            subreddits: topSubreddits.map((r: any) => r.subreddit)
+            subreddits: topSubreddits.map((r: any) => r.subreddit),
+            websiteUrl
           }
         });
         
@@ -107,7 +252,11 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           throw new Error(analyticsError.message);
         }
         
-        setSubredditData(analyticsData.analytics || []);
+        const formattedAnalytics = analyticsData.analytics || [];
+        setSubredditData(formattedAnalytics);
+        
+        // Store the analytics data
+        await storeSubredditAnalytics(formattedAnalytics);
         
         if (forceRegenerate) {
           toast({
@@ -129,8 +278,16 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     }
   };
 
-  const fetchRedditPosts = async () => {
+  const fetchRedditPosts = async (forceRegenerate = false) => {
     if (subredditData.length === 0) return;
+    
+    // If not forcing regeneration, try to load stored data first
+    if (!forceRegenerate) {
+      const hasStoredPosts = await fetchStoredRedditPosts();
+      if (hasStoredPosts) {
+        return; // Use stored data
+      }
+    }
     
     setIsLoadingPosts(true);
     try {
@@ -145,7 +302,11 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         throw new Error(error.message);
       }
       
-      setRedditPosts(data.posts || []);
+      const posts = data.posts || [];
+      setRedditPosts(posts);
+      
+      // Store the posts data
+      await storeRedditPosts(posts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
       toast({
@@ -176,8 +337,12 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     }
   }, [subredditData]);
 
-  const handleRegenerate = () => {
-    fetchSubredditAnalytics(true);
+  const handleRegenerate = async () => {
+    // Force regenerate both analytics and posts
+    await fetchSubredditAnalytics(true);
+    if (subredditData.length > 0) {
+      await fetchRedditPosts(true);
+    }
   };
 
   const formatNumber = (num: number) => {
