@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -221,19 +222,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
 
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        // Filter subreddits by minimum activity threshold
-        const activeSubreddits = analysisData.recommendations.filter((r: any) => {
-          const subscribers = parseInt(r.subscribers?.replace(/[^\d]/g, '') || '0');
-          return subscribers >= 1000; // Minimum 1K subscribers
-        }).slice(0, 3);
+        console.log(`Received ${analysisData.recommendations.length} subreddit recommendations`);
         
-        if (activeSubreddits.length === 0) {
-          throw new Error('No subreddits found that meet minimum activity requirements (1K+ subscribers)');
-        }
+        // Take all recommendations for analytics (up to 15)
+        const subredditsForAnalysis = analysisData.recommendations.slice(0, 15);
         
         const { data: analyticsData, error: analyticsError } = await supabase.functions.invoke('reddit-analytics', {
           body: { 
-            subreddits: activeSubreddits.map((r: any) => r.subreddit),
+            subreddits: subredditsForAnalysis.map((r: any) => r.subreddit),
             websiteUrl
           }
         });
@@ -242,13 +238,47 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           throw new Error(analyticsError.message);
         }
         
-        // Filter analytics by engagement rate threshold
-        const qualityAnalytics = analyticsData.analytics?.filter((a: any) => a.engagement_rate >= 0.005) || [];
+        console.log(`Received analytics for ${analyticsData.analytics?.length || 0} subreddits`);
         
-        setSubredditData(qualityAnalytics);
+        // Apply more lenient filtering - reduced minimum thresholds
+        const activeAnalytics = analyticsData.analytics?.filter((a: any) => {
+          const minSubscribers = 500; // Reduced from 1000
+          const minEngagementRate = 0.001; // Reduced from 0.005 (0.1% instead of 0.5%)
+          
+          return a.subscribers >= minSubscribers && a.engagement_rate >= minEngagementRate;
+        }) || [];
+        
+        console.log(`After filtering: ${activeAnalytics.length} active subreddits found`);
+        
+        if (activeAnalytics.length === 0) {
+          // If still no results, take the top 3 by subscriber count regardless of thresholds
+          const fallbackAnalytics = analyticsData.analytics
+            ?.sort((a: any, b: any) => b.subscribers - a.subscribers)
+            .slice(0, 3) || [];
+          
+          console.log(`Using fallback: ${fallbackAnalytics.length} subreddits by subscriber count`);
+          setSubredditData(fallbackAnalytics);
+          
+          toast({
+            title: 'Analytics Generated',
+            description: `Generated analytics for ${fallbackAnalytics.length} subreddits (using fallback criteria)`,
+          });
+        } else {
+          // Sort by engagement rate and take top 3
+          const topAnalytics = activeAnalytics
+            .sort((a: any, b: any) => b.engagement_rate - a.engagement_rate)
+            .slice(0, 3);
+          
+          setSubredditData(topAnalytics);
+          
+          toast({
+            title: 'Analytics Generated',
+            description: `Generated analytics for ${topAnalytics.length} high-quality subreddits`,
+          });
+        }
         
         // Cache in session
-        SessionManager.setSessionData(`analytics_${websiteUrl}`, qualityAnalytics);
+        SessionManager.setSessionData(`analytics_${websiteUrl}`, subredditData);
         
         if (forceRegenerate) {
           toast({
@@ -256,12 +286,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
             description: 'New subreddit analytics have been generated',
           });
         }
+      } else {
+        throw new Error('No subreddit recommendations received from analysis');
       }
     } catch (err: any) {
       console.error('Error fetching subreddit analytics:', err);
       toast({
         title: 'Error',
-        description: 'Failed to load subreddit analytics',
+        description: err.message || 'Failed to load subreddit analytics',
         variant: 'destructive',
       });
     } finally {

@@ -34,12 +34,12 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY is not configured in the server");
     }
 
-    // If forceRegenerate is true, generate exactly 3 new unique recommendations
+    // If forceRegenerate is true, generate exactly 15 new unique recommendations
     if (forceRegenerate) {
       console.log('Force regenerating recommendations with excluded subreddits:', excludeSubreddits);
       
-      // Generate new recommendations with exclusions, requesting exactly 3
-      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 3);
+      // Generate 15 new recommendations with exclusions
+      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 15);
       
       // Store the new recommendations in Supabase
       const recommendationsToStore = recommendations.map((rec: any) => ({
@@ -94,8 +94,8 @@ serve(async (req) => {
       );
     }
     
-    // Otherwise generate new recommendations (initial load - 5 recommendations)
-    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 5);
+    // Otherwise generate new recommendations (initial load - 15 recommendations)
+    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 15);
     
     // Store the recommendations in Supabase
     const recommendationsToStore = recommendations.map((rec: any) => ({
@@ -155,7 +155,7 @@ serve(async (req) => {
   }
 });
 
-async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 5) {
+async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 15) {
   try {
     const excludeText = excludeSubreddits.length > 0 
       ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all ${requestCount} recommendations are completely different from these excluded subreddits. Generate ${requestCount} completely NEW and UNIQUE subreddit recommendations.`
@@ -172,15 +172,15 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
         messages: [
           {
             role: "system",
-            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend exactly ${requestCount} subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix.${excludeText}`
+            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend exactly ${requestCount} subreddits where the website owner should engage. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix. Prioritize well-established subreddits with active communities (1000+ members preferred).${excludeText}`
           },
           {
             role: "user",
-            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend exactly ${requestCount} subreddits where this business can engage effectively. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
+            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend exactly ${requestCount} subreddits where this business can engage effectively. Focus on active, well-established communities with good engagement rates. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
           }
         ],
         temperature: 0.8,
-        max_tokens: 1500,
+        max_tokens: 2000,
         response_format: { "type": "json_object" }
       }),
     });
