@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,6 +77,23 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Function to ensure unique subreddits
+  const ensureUniqueSubreddits = (subreddits: SubredditData[]) => {
+    const seen = new Set();
+    const unique = [];
+    
+    for (const subreddit of subreddits) {
+      const name = subreddit.subreddit.toLowerCase().trim();
+      if (!seen.has(name)) {
+        seen.add(name);
+        unique.push(subreddit);
+      }
+    }
+    
+    console.log(`Filtered ${subreddits.length} -> ${unique.length} unique subreddits for display`);
+    return unique;
+  };
 
   const fetchStoredSubredditAnalytics = async () => {
     try {
@@ -224,12 +240,15 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
         console.log(`Received ${analysisData.recommendations.length} subreddit recommendations`);
         
-        // Take all recommendations for analytics (up to 15)
-        const subredditsForAnalysis = analysisData.recommendations.slice(0, 15);
+        // Take all recommendations for analytics (up to 20)
+        const subredditsForAnalysis = analysisData.recommendations.slice(0, 20);
+        
+        // Ensure uniqueness before sending to analytics
+        const uniqueSubreddits = ensureUniqueSubreddits(subredditsForAnalysis.map((r: any) => ({ subreddit: r.subreddit })));
         
         const { data: analyticsData, error: analyticsError } = await supabase.functions.invoke('reddit-analytics', {
           body: { 
-            subreddits: subredditsForAnalysis.map((r: any) => r.subreddit),
+            subreddits: uniqueSubreddits.map((r: any) => r.subreddit),
             websiteUrl
           }
         });
@@ -248,24 +267,29 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           return a.subscribers >= minSubscribers && a.engagement_rate >= minEngagementRate;
         }) || [];
         
-        console.log(`After filtering: ${activeAnalytics.length} active subreddits found`);
+        // Ensure uniqueness in the filtered results
+        const uniqueActiveAnalytics = ensureUniqueSubreddits(activeAnalytics);
         
-        if (activeAnalytics.length === 0) {
+        console.log(`After filtering and deduplication: ${uniqueActiveAnalytics.length} active unique subreddits found`);
+        
+        if (uniqueActiveAnalytics.length === 0) {
           // If still no results, take the top 3 by subscriber count regardless of thresholds
           const fallbackAnalytics = analyticsData.analytics
             ?.sort((a: any, b: any) => b.subscribers - a.subscribers)
             .slice(0, 3) || [];
           
-          console.log(`Using fallback: ${fallbackAnalytics.length} subreddits by subscriber count`);
-          setSubredditData(fallbackAnalytics);
+          const uniqueFallback = ensureUniqueSubreddits(fallbackAnalytics);
+          
+          console.log(`Using fallback: ${uniqueFallback.length} unique subreddits by subscriber count`);
+          setSubredditData(uniqueFallback);
           
           toast({
             title: 'Analytics Generated',
-            description: `Generated analytics for ${fallbackAnalytics.length} subreddits (using fallback criteria)`,
+            description: `Generated analytics for ${uniqueFallback.length} subreddits (using fallback criteria)`,
           });
         } else {
           // Sort by engagement rate and take top 3
-          const topAnalytics = activeAnalytics
+          const topAnalytics = uniqueActiveAnalytics
             .sort((a: any, b: any) => b.engagement_rate - a.engagement_rate)
             .slice(0, 3);
           
@@ -273,7 +297,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           
           toast({
             title: 'Analytics Generated',
-            description: `Generated analytics for ${topAnalytics.length} high-quality subreddits`,
+            description: `Generated analytics for ${topAnalytics.length} high-quality unique subreddits`,
           });
         }
         
@@ -283,7 +307,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         if (forceRegenerate) {
           toast({
             title: 'Success',
-            description: 'New subreddit analytics have been generated',
+            description: 'New unique subreddit analytics have been generated',
           });
         }
       } else {
@@ -513,11 +537,11 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isLoadingAnalytics ? (
           [...Array(3)].map((_, index) => (
-            <SubredditSkeleton key={index} />
+            <SubredditSkeleton key={`skeleton-${index}`} />
           ))
         ) : (
           subredditData.map((data, index) => (
-            <Card key={data.subreddit} className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
+            <Card key={`${data.subreddit}-${index}`} className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
               <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
                 <CardTitle className="flex items-center justify-between">
                   <span className="text-xl font-bold">r/{data.subreddit}</span>
@@ -592,7 +616,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
                   <div className="flex flex-wrap gap-1">
                     {data.top_themes.map((theme, i) => (
                       <span
-                        key={i}
+                        key={`${data.subreddit}-theme-${i}-${theme.word}`}
                         className="px-2 py-1 bg-gray-100 text-xs rounded-full"
                       >
                         {theme.word} ({theme.count})
@@ -633,14 +657,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, index) => (
-                <PostSkeleton key={index} />
+                <PostSkeleton key={`post-skeleton-${index}`} />
               ))}
             </div>
           </div>
         ) : redditPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {redditPosts.map((post) => (
-              <Card key={post.id} className="border hover:shadow-md transition-shadow">
+              <Card key={`post-${post.id}`} className="border hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-marketing-purple">r/{post.subreddit}</span>
