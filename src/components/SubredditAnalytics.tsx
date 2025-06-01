@@ -102,13 +102,23 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       console.log('Fetching stored analytics for:', websiteUrl);
       setIsLoadingAnalytics(true);
 
-      // First check session cache
-      const sessionKey = `analytics_${websiteUrl}`;
-      const cachedData = SessionManager.getSessionData(sessionKey);
+      // First check session cache using dashboard-specific method
+      const cachedData = SessionManager.getDashboardAnalytics(websiteUrl);
       
-      if (cachedData) {
-        console.log('Found cached analytics data');
+      if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+        console.log('Found cached dashboard analytics data:', cachedData.length, 'subreddits');
         setSubredditData(cachedData);
+        setIsLoadingAnalytics(false);
+        return true;
+      }
+
+      // Fallback to legacy session keys
+      const legacyCachedData = SessionManager.getSessionData(`analytics_${websiteUrl}`);
+      if (legacyCachedData && Array.isArray(legacyCachedData) && legacyCachedData.length > 0) {
+        console.log('Found legacy cached analytics data, migrating to dashboard format');
+        setSubredditData(legacyCachedData);
+        // Migrate to new format
+        SessionManager.setDashboardAnalytics(websiteUrl, legacyCachedData);
         setIsLoadingAnalytics(false);
         return true;
       }
@@ -139,8 +149,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
 
         setSubredditData(formattedData);
         
-        // Cache in session
-        SessionManager.setSessionData(sessionKey, formattedData);
+        // Cache in session using dashboard-specific method
+        SessionManager.setDashboardAnalytics(websiteUrl, formattedData);
         
         setIsLoadingAnalytics(false);
         return true;
@@ -160,13 +170,23 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       console.log('Fetching stored posts for:', websiteUrl);
       setIsLoadingPosts(true);
 
-      // First check session cache
-      const sessionKey = `posts_${websiteUrl}`;
-      const cachedData = SessionManager.getSessionData(sessionKey);
+      // First check session cache using dashboard-specific method
+      const cachedData = SessionManager.getDashboardPosts(websiteUrl);
       
-      if (cachedData) {
-        console.log('Found cached posts data');
+      if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+        console.log('Found cached dashboard posts data:', cachedData.length, 'posts');
         setRedditPosts(cachedData);
+        setIsLoadingPosts(false);
+        return true;
+      }
+
+      // Fallback to legacy session keys
+      const legacyCachedData = SessionManager.getSessionData(`posts_${websiteUrl}`);
+      if (legacyCachedData && Array.isArray(legacyCachedData) && legacyCachedData.length > 0) {
+        console.log('Found legacy cached posts data, migrating to dashboard format');
+        setRedditPosts(legacyCachedData);
+        // Migrate to new format
+        SessionManager.setDashboardPosts(websiteUrl, legacyCachedData);
         setIsLoadingPosts(false);
         return true;
       }
@@ -198,8 +218,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
 
         setRedditPosts(formattedPosts);
         
-        // Cache in session
-        SessionManager.setSessionData(sessionKey, formattedPosts);
+        // Cache in session using dashboard-specific method
+        SessionManager.setDashboardPosts(websiteUrl, formattedPosts);
         
         setIsLoadingPosts(false);
         return true;
@@ -287,6 +307,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         
         console.log(`After filtering and deduplication: ${uniqueActiveAnalytics.length} active unique subreddits found`);
         
+        let finalAnalytics = [];
+        
         if (uniqueActiveAnalytics.length === 0) {
           // If still no results, take the top 3 by subscriber count regardless of thresholds
           const fallbackAnalytics = analyticsData.analytics
@@ -294,9 +316,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
             .slice(0, 3) || [];
           
           const uniqueFallback = ensureUniqueSubreddits(fallbackAnalytics);
+          finalAnalytics = uniqueFallback;
           
           console.log(`Using fallback: ${uniqueFallback.length} unique subreddits by subscriber count`);
-          setSubredditData(uniqueFallback);
           
           toast({
             title: 'Analytics Generated',
@@ -308,7 +330,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
             .sort((a: any, b: any) => b.engagement_rate - a.engagement_rate)
             .slice(0, 3);
           
-          setSubredditData(topAnalytics);
+          finalAnalytics = topAnalytics;
           
           toast({
             title: 'Analytics Generated',
@@ -316,8 +338,10 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           });
         }
         
-        // Cache in session
-        SessionManager.setSessionData(`analytics_${websiteUrl}`, subredditData);
+        setSubredditData(finalAnalytics);
+        
+        // Cache in session using dashboard-specific method
+        SessionManager.setDashboardAnalytics(websiteUrl, finalAnalytics);
         
         if (forceRegenerate) {
           toast({
@@ -387,8 +411,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       
       setRedditPosts(validPosts);
       
-      // Cache in session
-      SessionManager.setSessionData(`posts_${websiteUrl}`, validPosts);
+      // Cache in session using dashboard-specific method
+      SessionManager.setDashboardPosts(websiteUrl, validPosts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
       toast({
@@ -429,9 +453,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   }, [subredditData]);
 
   const handleRegenerate = async () => {
-    // Clear cached data
-    SessionManager.removeSessionData(`analytics_${websiteUrl}`);
-    SessionManager.removeSessionData(`posts_${websiteUrl}`);
+    // Clear cached data using dashboard-specific methods
+    SessionManager.clearDashboardData(websiteUrl);
     
     await fetchSubredditAnalytics(true);
     if (subredditData.length > 0) {
