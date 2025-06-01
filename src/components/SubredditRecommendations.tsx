@@ -61,11 +61,11 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       const previousSubreddits = await fetchAllPreviousSubreddits();
       setAllPreviousSubreddits(previousSubreddits);
       
-      // Call the edge function
+      // Call the edge function - always exclude previous subreddits when regenerating
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          forceRegenerate,
+          forceRegenerate: true, // Always force regeneration to get new subreddits
           excludeSubreddits: forceRegenerate ? previousSubreddits : []
         }
       });

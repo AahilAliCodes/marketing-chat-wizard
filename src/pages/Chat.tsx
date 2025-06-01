@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Topbar from '@/components/Topbar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,11 +38,6 @@ const Chat = () => {
   const [websiteAnalysis, setWebsiteAnalysis] = useState<WebsiteAnalysis | null>(null);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Redirect to auth if not logged in
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
 
   // Load website context from location state, session, or database
   useEffect(() => {
