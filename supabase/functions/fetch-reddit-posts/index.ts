@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore
@@ -73,8 +72,9 @@ serve(async (req) => {
     const accessToken = authData.access_token;
 
     const allPosts = [];
+    const minPostsNeeded = 6;
 
-    // Fetch posts from each subreddit
+    // Fetch posts from each subreddit with increased limits to ensure we get enough posts
     for (const subreddit of subreddits) {
       try {
         console.log(`Fetching posts from r/${subreddit}`);
@@ -109,13 +109,16 @@ serve(async (req) => {
           );
           
           return productRelevance && hasEngagementKeywords && 
-                 post.data.score > 3 && // Lower threshold for more posts
+                 post.data.score > 2 && // Lower threshold for more posts
                  !post.data.over_18 && // Avoid NSFW posts
                  !post.data.locked; // Avoid locked posts
-        }).slice(0, 4); // Limit to 4 posts per subreddit
+        });
+
+        // Take more posts per subreddit to ensure we reach the minimum
+        const postsToProcess = relevantPosts.slice(0, Math.ceil(minPostsNeeded / subreddits.length) + 2);
 
         // Generate AI comments for relevant posts
-        for (const post of relevantPosts) {
+        for (const post of postsToProcess) {
           try {
             const aiComment = await generateStrategicComment(post, productAnalysis, subreddit);
 
@@ -138,12 +141,107 @@ serve(async (req) => {
       }
     }
 
-    // Sort by relevance score and engagement potential
+    // If we don't have enough posts, try with more lenient filtering
+    if (allPosts.length < minPostsNeeded) {
+      console.log(`Only found ${allPosts.length} posts, trying with more lenient filtering...`);
+      
+      for (const subreddit of subreddits) {
+        if (allPosts.length >= minPostsNeeded) break;
+        
+        try {
+          const postsResponse = await fetch(`https://oauth.reddit.com/r/${subreddit}/hot?limit=50`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'User-Agent': 'Subreddit Analysis Script by /u/smartkid18'
+            }
+          });
+          
+          const postsData = await postsResponse.json();
+          const posts = postsData.data?.children || [];
+
+          // More lenient filtering - just basic quality checks
+          const backupPosts = posts.filter((post: any) => {
+            const title = post.data.title.toLowerCase();
+            const content = post.data.selftext?.toLowerCase() || '';
+            const combinedText = `${title} ${content}`;
+            
+            // Skip posts we already have
+            const alreadyExists = allPosts.some(existing => existing.id === post.data.id);
+            if (alreadyExists) return false;
+            
+            // Basic quality filters
+            return post.data.score > 1 && 
+                   !post.data.over_18 && 
+                   !post.data.locked &&
+                   title.length > 10; // Ensure meaningful titles
+          }).slice(0, minPostsNeeded - allPosts.length);
+
+          // Generate AI comments for backup posts
+          for (const post of backupPosts) {
+            try {
+              const aiComment = await generateStrategicComment(post, productAnalysis, subreddit);
+
+              allPosts.push({
+                id: post.data.id,
+                title: post.data.title,
+                content: post.data.selftext || 'No content',
+                subreddit: subreddit,
+                author: post.data.author,
+                score: post.data.score,
+                url: `https://reddit.com${post.data.permalink}`,
+                aiComment: aiComment
+              });
+            } catch (error) {
+              console.error(`Error generating AI comment for backup post ${post.data.id}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching backup posts from r/${subreddit}:`, error);
+        }
+      }
+    }
+
+    // Sort by relevance score and engagement potential, ensure minimum 6 posts
     const sortedPosts = allPosts
       .sort((a, b) => b.score - a.score)
-      .slice(0, 9); // Limit to 9 total posts
+      .slice(0, Math.max(minPostsNeeded, 12)); // Show 6-12 posts
 
     console.log(`Found ${sortedPosts.length} relevant posts`);
+
+    // Store posts in database for future retrieval
+    if (sortedPosts.length > 0) {
+      try {
+        const postsToStore = sortedPosts.map(post => ({
+          website_url: websiteUrl,
+          title: post.title,
+          content: post.content,
+          subreddit: post.subreddit,
+          author: post.author,
+          score: post.score,
+          url: post.url,
+          ai_comment: post.aiComment
+        }));
+
+        // Delete existing posts for this website
+        await supabase
+          .from('reddit_posts_analysis')
+          .delete()
+          .eq('website_url', websiteUrl);
+
+        // Insert new posts
+        const { error: insertError } = await supabase
+          .from('reddit_posts_analysis')
+          .insert(postsToStore);
+
+        if (insertError) {
+          console.error('Error storing posts:', insertError);
+        } else {
+          console.log(`Successfully stored ${postsToStore.length} posts for ${websiteUrl}`);
+        }
+      } catch (error) {
+        console.error('Error in posts storage process:', error);
+      }
+    }
 
     return new Response(JSON.stringify({ posts: sortedPosts }), {
       status: 200,
