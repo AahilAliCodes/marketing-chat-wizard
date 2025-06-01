@@ -198,126 +198,133 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
   );
 
   return (
-    <>
-      <AgenticWorkflow 
-        isVisible={showWorkflow} 
-        isComplete={isGenerationComplete}
-        onComplete={handleWorkflowComplete}
-      />
-      
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Reddit Post Recommendations</h1>
-            <p className="text-gray-600 mt-2">AI-generated posts designed to spark engagement in relevant subreddits</p>
-          </div>
-          <div className="flex items-center gap-4">
-            {websiteUrl && (
-              <span className="text-sm text-gray-600">
-                Website: <span className="font-medium">{websiteUrl}</span>
-              </span>
-            )}
-            {!user ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  disabled
-                  className="flex items-center gap-2 opacity-50 cursor-not-allowed"
-                >
-                  <Lock className="h-4 w-4" />
-                  <RefreshCw className="h-4 w-4" />
-                  Regenerate
-                </Button>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">Join the waitlist to access</p>
-                  <Button
-                    onClick={() => navigate('/auth')}
-                    size="sm"
-                    className="bg-marketing-purple hover:bg-marketing-purple/90"
-                  >
-                    Make an Account
-                  </Button>
-                </div>
-              </div>
-            ) : (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Reddit Post Recommendations</h1>
+          <p className="text-gray-600 mt-2">AI-generated posts designed to spark engagement in relevant subreddits</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {websiteUrl && (
+            <span className="text-sm text-gray-600">
+              Website: <span className="font-medium">{websiteUrl}</span>
+            </span>
+          )}
+          {!user ? (
+            <div className="flex items-center gap-2">
               <Button
-                onClick={handleRegenerate}
-                disabled={isLoading || isRegenerating || showWorkflow}
-                className="flex items-center gap-2"
+                disabled
+                className="flex items-center gap-2 opacity-50 cursor-not-allowed"
               >
-                <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                <Lock className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
                 Regenerate
               </Button>
-            )}
-          </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Join the waitlist to access</p>
+                <Button
+                  onClick={() => navigate('/auth')}
+                  size="sm"
+                  className="bg-marketing-purple hover:bg-marketing-purple/90"
+                >
+                  Make an Account
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              onClick={handleRegenerate}
+              disabled={isLoading || isRegenerating || showWorkflow}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+              Regenerate
+            </Button>
+          )}
         </div>
-
-        {isLoading && !showWorkflow ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...Array(6)].map((_, index) => (
-              <PostSkeleton key={index} />
-            ))}
-          </div>
-        ) : posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {posts.map((post) => (
-              <Card key={post.id} className="border hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-marketing-purple" />
-                      <span className="text-sm font-medium text-marketing-purple">r/{post.subreddit}</span>
-                    </div>
-                    {post.subscribers && (
-                      <span className="text-xs text-gray-500">{post.subscribers} members</span>
-                    )}
-                  </div>
-                  <CardTitle className="text-lg leading-tight">{post.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                    {post.content}
-                  </div>
-                  
-                  {post.reasoning && (
-                    <div className="border-t pt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Bot className="h-4 w-4 text-blue-600" />
-                        <p className="text-xs font-medium text-gray-700">AI Strategy:</p>
-                      </div>
-                      <p className="text-xs text-gray-600 italic">{post.reasoning}</p>
-                    </div>
-                  )}
-
-                  {post.engagement_tip && (
-                    <div className="bg-blue-50 p-3 rounded-md">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MessageSquare className="h-4 w-4 text-blue-600" />
-                        <p className="text-xs font-medium text-blue-700">Engagement Tip:</p>
-                      </div>
-                      <p className="text-xs text-blue-600">{post.engagement_tip}</p>
-                    </div>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => window.open(`https://www.reddit.com/r/${post.subreddit}/submit`, '_blank')}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Post to r/{post.subreddit}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No post recommendations available. Try generating new recommendations.</p>
-          </div>
-        )}
       </div>
-    </>
+
+      {/* Show embedded workflow while loading */}
+      {showWorkflow && (
+        <AgenticWorkflow 
+          isVisible={showWorkflow} 
+          isComplete={isGenerationComplete}
+          onComplete={handleWorkflowComplete}
+          embedded={true}
+        />
+      )}
+
+      {/* Only show content when not in workflow mode */}
+      {!showWorkflow && (
+        <>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <PostSkeleton key={index} />
+              ))}
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {posts.map((post) => (
+                <Card key={post.id} className="border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-marketing-purple" />
+                        <span className="text-sm font-medium text-marketing-purple">r/{post.subreddit}</span>
+                      </div>
+                      {post.subscribers && (
+                        <span className="text-xs text-gray-500">{post.subscribers} members</span>
+                      )}
+                    </div>
+                    <CardTitle className="text-lg leading-tight">{post.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                      {post.content}
+                    </div>
+                    
+                    {post.reasoning && (
+                      <div className="border-t pt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Bot className="h-4 w-4 text-blue-600" />
+                          <p className="text-xs font-medium text-gray-700">AI Strategy:</p>
+                        </div>
+                        <p className="text-xs text-gray-600 italic">{post.reasoning}</p>
+                      </div>
+                    )}
+
+                    {post.engagement_tip && (
+                      <div className="bg-blue-50 p-3 rounded-md">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          <p className="text-xs font-medium text-blue-700">Engagement Tip:</p>
+                        </div>
+                        <p className="text-xs text-blue-600">{post.engagement_tip}</p>
+                      </div>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => window.open(`https://www.reddit.com/r/${post.subreddit}/submit`, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Post to r/{post.subreddit}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No post recommendations available. Try generating new recommendations.</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 };
 
