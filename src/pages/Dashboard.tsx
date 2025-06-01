@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import Topbar from '@/components/Topbar';
 import SubredditAnalytics from '@/components/SubredditAnalytics';
 import LoadingScreen from '@/components/LoadingScreen';
+import AgenticWorkflow from '@/components/AgenticWorkflow';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +25,8 @@ const Dashboard = () => {
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [hasError, setHasError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
+  const [isAnalysisComplete, setIsAnalysisComplete] = useState<boolean>(false);
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,11 +41,18 @@ const Dashboard = () => {
     setErrorMessage(error?.message || `An error occurred during ${context}`);
     setIsAnalyzing(false);
     setIsLoading(false);
+    setShowWorkflow(false);
   };
 
   const resetError = () => {
     setHasError(false);
     setErrorMessage('');
+  };
+
+  const handleWorkflowComplete = () => {
+    setShowWorkflow(false);
+    setIsAnalyzing(false);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -53,6 +64,8 @@ const Dashboard = () => {
       if (state?.isAnalyzing && state?.websiteUrl) {
         setIsAnalyzing(true);
         setWebsiteUrl(state.websiteUrl);
+        setShowWorkflow(true);
+        setIsAnalysisComplete(false);
         
         // Store current website analysis in session
         SessionManager.setSessionData('current_analysis', {
@@ -61,8 +74,6 @@ const Dashboard = () => {
         });
         
         const analyzeWebsite = async () => {
-          const startTime = Date.now();
-          
           try {
             // First check if this website has already been analyzed for this session
             let existingAnalysis = SessionManager.getSessionData(`analysis_${state.websiteUrl}`);
@@ -89,6 +100,8 @@ const Dashboard = () => {
             
             if (existingAnalysis) {
               // Website already exists in the database or session
+              setIsAnalysisComplete(true);
+              
               toast({
                 title: 'Analysis Retrieved',
                 description: 'Previously analyzed website data has been loaded',
@@ -108,6 +121,7 @@ const Dashboard = () => {
               
               // Cache the new analysis in session
               SessionManager.setSessionData(`analysis_${state.websiteUrl}`, data);
+              setIsAnalysisComplete(true);
               
               // Show success toast
               toast({
@@ -146,13 +160,6 @@ const Dashboard = () => {
               description: errorMessage,
               variant: 'destructive',
             });
-          } finally {
-            // Keep loading for at least 3 seconds total
-            const remainingTime = Math.max(0, 3000 - (Date.now() - startTime));
-            setTimeout(() => {
-              setIsAnalyzing(false);
-              setIsLoading(false);
-            }, remainingTime);
           }
         };
         
@@ -206,15 +213,11 @@ const Dashboard = () => {
     }
   }, [state?.isAnalyzing, state?.websiteUrl, toast, navigate]);
 
-  // Show loading screen during loading or analysis
-  if (isLoading || isAnalyzing) {
+  // Show loading screen only during initial loading (not analysis)
+  if (isLoading && !isAnalyzing) {
     return (
       <LoadingScreen 
-        onComplete={() => {
-          if (!isAnalyzing) {
-            setIsLoading(false);
-          }
-        }}
+        onComplete={() => setIsLoading(false)}
       />
     );
   }
@@ -250,16 +253,33 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Topbar />
       <div className="container mx-auto px-6 py-8">
-        {websiteUrl ? (
-          <SubredditAnalytics websiteUrl={websiteUrl} />
-        ) : (
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome to Reddit Analytics</h1>
-            <p className="text-gray-600 mb-6">Please analyze a website first to view Reddit analytics.</p>
-            <Button onClick={() => navigate('/')}>
-              Analyze a Website
-            </Button>
+        {/* Show embedded workflow while analyzing */}
+        {showWorkflow && (
+          <div className="mb-8">
+            <AgenticWorkflow 
+              isVisible={showWorkflow} 
+              isComplete={isAnalysisComplete}
+              onComplete={handleWorkflowComplete}
+              embedded={true}
+            />
           </div>
+        )}
+
+        {/* Only show main content when not in workflow mode */}
+        {!showWorkflow && (
+          <>
+            {websiteUrl ? (
+              <SubredditAnalytics websiteUrl={websiteUrl} />
+            ) : (
+              <div className="text-center py-12">
+                <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome to Reddit Analytics</h1>
+                <p className="text-gray-600 mb-6">Please analyze a website first to view Reddit analytics.</p>
+                <Button onClick={() => navigate('/')}>
+                  Analyze a Website
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
       <Toaster />

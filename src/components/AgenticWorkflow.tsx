@@ -60,35 +60,44 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       });
     }, stepDuration);
 
-    // Smooth progress animation that continues to 100% regardless of backend status
+    // Continuous smooth progress animation that always moves forward
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        // Always progress towards 100%, but slow down after 72%
-        let increment = 2;
+        // Calculate target progress based on current step
+        const baseProgress = (currentStep / totalSteps) * 100;
+        let targetProgress = Math.min(baseProgress + 20, 100); // Always ahead of step progress
+        
+        // If we're past 72% and not complete yet, slow down but keep moving
         if (prev >= 72 && !isComplete) {
-          // Slow down significantly after 72% but keep moving
-          increment = 0.3;
+          // Very slow but continuous progress
+          const increment = 0.1 + Math.random() * 0.2; // Random between 0.1-0.3%
+          targetProgress = Math.min(prev + increment, 99.5); // Cap at 99.5% until complete
+        } else if (isComplete) {
+          // Jump to 100% when complete
+          targetProgress = 100;
+        } else {
+          // Normal progress rate before 72%
+          const increment = 1 + Math.random() * 1; // Random between 1-2%
+          targetProgress = Math.min(prev + increment, targetProgress);
         }
         
-        const newProgress = Math.min(prev + increment, 100);
-        
         // If we reach 100% and generation is complete, trigger completion
-        if (newProgress >= 100 && isComplete && !hasCompleted) {
+        if (targetProgress >= 100 && isComplete && !hasCompleted) {
           setHasCompleted(true);
           setTimeout(() => {
             onComplete?.();
           }, 500);
         }
         
-        return newProgress;
+        return targetProgress;
       });
-    }, 100);
+    }, 150); // Update every 150ms for smooth animation
 
     return () => {
       clearInterval(stepInterval);
       clearInterval(progressInterval);
     };
-  }, [isVisible, isComplete, onComplete, hasCompleted]);
+  }, [isVisible, isComplete, onComplete, hasCompleted, currentStep]);
 
   if (!isVisible) return null;
 
