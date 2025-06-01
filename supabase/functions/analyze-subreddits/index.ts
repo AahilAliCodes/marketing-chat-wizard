@@ -34,62 +34,148 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY is not configured in the server");
     }
 
-    // If forceRegenerate is true, generate exactly 20 new unique recommendations
+    // Check if we have cached recommendations
+    const { data: cachedRecommendations, error: cacheError } = await supabase
+      .from('subreddit_recommendations')
+      .select('*')
+      .eq('website_url', websiteUrl)
+      .eq('is_cached', true)
+      .order('created_at', { ascending: false });
+
+    if (cacheError) {
+      console.error('Error fetching cached recommendations:', cacheError);
+    }
+
+    // If forceRegenerate is true, try to use cached recommendations first
     if (forceRegenerate) {
       console.log('Force regenerating recommendations with excluded subreddits:', excludeSubreddits);
       
-      // Generate 20 new recommendations with exclusions
-      const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 20);
-      
-      // Ensure uniqueness by name
-      const uniqueRecommendations = removeDuplicateSubreddits(recommendations);
-      
-      // Store the new recommendations in Supabase
-      const recommendationsToStore = uniqueRecommendations.map((rec: any) => ({
-        website_url: websiteUrl,
-        subreddit: rec.name,
-        reason: rec.reason,
-      }));
-      
-      const { error: insertError } = await supabase
-        .from('subreddit_recommendations')
-        .insert(recommendationsToStore);
+      // Check if we have enough cached recommendations that haven't been used
+      const availableCached = cachedRecommendations?.filter(rec => 
+        !excludeSubreddits.includes(rec.subreddit.toLowerCase())
+      ) || [];
+
+      console.log(`Found ${availableCached.length} available cached recommendations`);
+
+      if (availableCached.length >= 3) {
+        // Use cached recommendations
+        const selectedCached = availableCached.slice(0, 3);
         
-      if (insertError) {
-        console.error('Error storing new recommendations:', insertError);
-      } else {
-        console.log('Successfully stored', recommendationsToStore.length, 'new unique recommendations');
-      }
-      
-      // Return the new recommendations with generated IDs
-      const formattedRecommendations = uniqueRecommendations.map((rec: any, index: number) => ({
-        id: `new-${Date.now()}-${index}`,
-        subreddit: rec.name,
-        reason: rec.reason
-      }));
-      
-      return new Response(
-        JSON.stringify({ recommendations: formattedRecommendations }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        // Mark these as used by adding them to regular recommendations
+        const recommendationsToStore = selectedCached.map((rec: any) => ({
+          website_url: websiteUrl,
+          subreddit: rec.subreddit,
+          reason: rec.reason,
+          is_cached: false
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('subreddit_recommendations')
+          .insert(recommendationsToStore);
+          
+        if (insertError) {
+          console.error('Error storing cached recommendations as used:', insertError);
+        } else {
+          console.log('Successfully used', selectedCached.length, 'cached recommendations');
         }
-      );
+        
+        // Return the cached recommendations
+        const formattedRecommendations = selectedCached.map((rec: any, index: number) => ({
+          id: `cached-${Date.now()}-${index}`,
+          subreddit: rec.subreddit,
+          reason: rec.reason
+        }));
+        
+        return new Response(
+          JSON.stringify({ recommendations: formattedRecommendations }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } else {
+        // Not enough cached recommendations, generate new ones
+        console.log('Not enough cached recommendations, generating new ones');
+        
+        // Generate 15 new recommendations
+        const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 15);
+        
+        // Ensure uniqueness
+        const uniqueRecommendations = removeDuplicateSubreddits(recommendations);
+        
+        if (uniqueRecommendations.length < 3) {
+          throw new Error('Could not generate enough unique subreddit recommendations');
+        }
+        
+        // Take top 3 for immediate use
+        const topRecommendations = uniqueRecommendations.slice(0, 3);
+        const remainingRecommendations = uniqueRecommendations.slice(3);
+        
+        // Store top 3 as regular recommendations
+        const topRecommendationsToStore = topRecommendations.map((rec: any) => ({
+          website_url: websiteUrl,
+          subreddit: rec.name,
+          reason: rec.reason,
+          is_cached: false
+        }));
+        
+        // Store remaining as cached recommendations
+        const cachedRecommendationsToStore = remainingRecommendations.map((rec: any) => ({
+          website_url: websiteUrl,
+          subreddit: rec.name,
+          reason: rec.reason,
+          is_cached: true
+        }));
+        
+        // Clear old cached recommendations first
+        await supabase
+          .from('subreddit_recommendations')
+          .delete()
+          .eq('website_url', websiteUrl)
+          .eq('is_cached', true);
+        
+        // Insert new recommendations
+        const allRecommendationsToStore = [...topRecommendationsToStore, ...cachedRecommendationsToStore];
+        
+        const { error: insertError } = await supabase
+          .from('subreddit_recommendations')
+          .insert(allRecommendationsToStore);
+          
+        if (insertError) {
+          console.error('Error storing new recommendations:', insertError);
+        } else {
+          console.log(`Successfully stored ${topRecommendationsToStore.length} active and ${cachedRecommendationsToStore.length} cached recommendations`);
+        }
+        
+        // Return the top 3 recommendations
+        const formattedRecommendations = topRecommendations.map((rec: any, index: number) => ({
+          id: `new-${Date.now()}-${index}`,
+          subreddit: rec.name,
+          reason: rec.reason
+        }));
+        
+        return new Response(
+          JSON.stringify({ recommendations: formattedRecommendations }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
-    // Check if we already have recommendations for this website
+    // Check if we already have active recommendations for this website
     const { data: existingRecommendations, error: fetchError } = await supabase
       .from('subreddit_recommendations')
       .select('*')
-      .eq('website_url', websiteUrl);
+      .eq('website_url', websiteUrl)
+      .eq('is_cached', false);
       
     if (fetchError) {
       console.error('Error fetching existing recommendations:', fetchError);
     }
     
-    // If we have existing recommendations, return those
+    // If we have existing active recommendations, return those
     if (existingRecommendations && existingRecommendations.length > 0) {
-      console.log('Found existing recommendations:', existingRecommendations.length);
-      // Ensure uniqueness in existing recommendations too
+      console.log('Found existing active recommendations:', existingRecommendations.length);
       const uniqueExisting = removeDuplicateSubreddits(existingRecommendations, 'subreddit');
       return new Response(
         JSON.stringify({ recommendations: uniqueExisting }),
@@ -99,41 +185,63 @@ serve(async (req) => {
       );
     }
     
-    // Otherwise generate new recommendations (initial load - 20 recommendations)
-    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 20);
+    // Otherwise generate new recommendations (initial load - 15 recommendations)
+    console.log('Generating initial recommendations');
+    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 15);
     
     // Ensure uniqueness
     const uniqueRecommendations = removeDuplicateSubreddits(recommendations);
     
-    // Store the recommendations in Supabase
-    const recommendationsToStore = uniqueRecommendations.map((rec: any) => ({
+    if (uniqueRecommendations.length < 3) {
+      throw new Error('Could not generate enough unique subreddit recommendations');
+    }
+    
+    // Take top 3 for immediate use
+    const topRecommendations = uniqueRecommendations.slice(0, 3);
+    const remainingRecommendations = uniqueRecommendations.slice(3);
+    
+    // Store top 3 as regular recommendations
+    const topRecommendationsToStore = topRecommendations.map((rec: any) => ({
       website_url: websiteUrl,
       subreddit: rec.name,
       reason: rec.reason,
+      is_cached: false
     }));
+    
+    // Store remaining as cached recommendations
+    const cachedRecommendationsToStore = remainingRecommendations.map((rec: any) => ({
+      website_url: websiteUrl,
+      subreddit: rec.name,
+      reason: rec.reason,
+      is_cached: true
+    }));
+    
+    // Insert all recommendations
+    const allRecommendationsToStore = [...topRecommendationsToStore, ...cachedRecommendationsToStore];
     
     const { error: insertError } = await supabase
       .from('subreddit_recommendations')
-      .insert(recommendationsToStore);
+      .insert(allRecommendationsToStore);
       
     if (insertError) {
       console.error('Error storing recommendations:', insertError);
     } else {
-      console.log('Successfully stored', recommendationsToStore.length, 'unique recommendations');
+      console.log(`Successfully stored ${topRecommendationsToStore.length} active and ${cachedRecommendationsToStore.length} cached recommendations`);
     }
     
-    // Fetch the stored recommendations to return with their IDs
+    // Fetch the stored active recommendations to return with their IDs
     const { data: storedRecommendations, error: retrieveError } = await supabase
       .from('subreddit_recommendations')
       .select('*')
-      .eq('website_url', websiteUrl);
+      .eq('website_url', websiteUrl)
+      .eq('is_cached', false);
       
     if (retrieveError) {
       console.error('Error retrieving stored recommendations:', retrieveError);
       // If we can't retrieve the stored ones, just return the generated ones
       return new Response(
         JSON.stringify({ 
-          recommendations: uniqueRecommendations.map((rec: any, index: number) => ({
+          recommendations: topRecommendations.map((rec: any, index: number) => ({
             id: `temp-${index}`,
             subreddit: rec.name,
             reason: rec.reason
@@ -179,7 +287,7 @@ function removeDuplicateSubreddits(recommendations: any[], nameField: string = '
   return unique;
 }
 
-async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 20) {
+async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 15) {
   try {
     const excludeText = excludeSubreddits.length > 0 
       ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all ${requestCount} recommendations are completely different from these excluded subreddits. Generate ${requestCount} completely NEW and UNIQUE subreddit recommendations with NO DUPLICATES.`

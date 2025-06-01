@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -221,15 +223,24 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     }
 
     setIsLoadingAnalytics(true);
-    if (forceRegenerate) setIsRegenerating(true);
+    if (forceRegenerate) {
+      setIsRegenerating(true);
+      setGenerationStep('Finding high-quality subreddits...');
+    }
 
     try {
       console.log('Generating new subreddit analytics for:', websiteUrl);
       
+      // Get currently displayed subreddits to exclude them from regeneration
+      const excludeSubreddits = forceRegenerate ? subredditData.map(s => s.subreddit) : [];
+      
+      setGenerationStep('Analyzing subreddit recommendations...');
+      
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          forceRegenerate
+          forceRegenerate,
+          excludeSubreddits
         }
       });
       
@@ -240,8 +251,10 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
         console.log(`Received ${analysisData.recommendations.length} subreddit recommendations`);
         
-        // Take all recommendations for analytics (up to 20)
-        const subredditsForAnalysis = analysisData.recommendations.slice(0, 20);
+        setGenerationStep('Calculating engagement metrics...');
+        
+        // Take all recommendations for analytics (up to 3)
+        const subredditsForAnalysis = analysisData.recommendations.slice(0, 3);
         
         // Ensure uniqueness before sending to analytics
         const uniqueSubreddits = ensureUniqueSubreddits(subredditsForAnalysis.map((r: any) => ({ subreddit: r.subreddit })));
@@ -258,6 +271,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         }
         
         console.log(`Received analytics for ${analyticsData.analytics?.length || 0} subreddits`);
+        
+        setGenerationStep('Processing analytics data...');
         
         // Apply more lenient filtering - reduced minimum thresholds
         const activeAnalytics = analyticsData.analytics?.filter((a: any) => {
@@ -323,6 +338,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     } finally {
       setIsLoadingAnalytics(false);
       setIsRegenerating(false);
+      setGenerationStep('');
     }
   };
 
@@ -338,6 +354,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     
     setIsLoadingPosts(true);
     setIsGeneratingPosts(true);
+    setGenerationStep('Analyzing relevant Reddit posts...');
     
     try {
       console.log('Generating new Reddit posts for:', websiteUrl);
@@ -352,6 +369,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       if (error) {
         throw new Error(error.message);
       }
+      
+      setGenerationStep('Generating AI-powered comments...');
       
       const posts = data.posts || [];
       
@@ -380,6 +399,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     } finally {
       setIsLoadingPosts(false);
       setIsGeneratingPosts(false);
+      setGenerationStep('');
     }
   };
 
@@ -455,6 +475,57 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       </TooltipProvider>
     );
   };
+
+  const LoadingCard = ({ title, step }: { title: string; step?: string }) => (
+    <Card className="relative overflow-hidden border-2 bg-gradient-to-br from-marketing-purple/5 to-purple-50">
+      <CardHeader className="bg-gradient-to-r from-marketing-purple/10 to-marketing-purple/5">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-marketing-purple" />
+            <span className="text-lg font-medium text-marketing-purple">{title}</span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="pt-6 space-y-4">
+        {step && (
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex space-x-1">
+              {[0, 1, 2].map((dot) => (
+                <div 
+                  key={dot}
+                  className="w-2 h-2 bg-marketing-purple rounded-full animate-bounce" 
+                  style={{ animationDelay: `${dot * 0.1}s` }}
+                />
+              ))}
+            </div>
+            <span className="text-sm text-gray-600 font-medium">{step}</span>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded" />
+              <div className="flex-1">
+                <Skeleton className="h-3 w-20 mb-1" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div>
+          <Skeleton className="h-3 w-24 mb-2" />
+          <div className="flex flex-wrap gap-1">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-6 w-16 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   const SubredditSkeleton = () => (
     <Card className="relative overflow-hidden border-2">
@@ -534,11 +605,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         </Button>
       </div>
 
+      {/* Subreddit Analytics Section with Enhanced Loading */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {isLoadingAnalytics ? (
-          [...Array(3)].map((_, index) => (
-            <SubredditSkeleton key={`skeleton-${index}`} />
-          ))
+        {(isLoadingAnalytics || isRegenerating) ? (
+          <>
+            <LoadingCard title="Analyzing Subreddits" step={generationStep} />
+            <SubredditSkeleton />
+            <SubredditSkeleton />
+          </>
         ) : (
           subredditData.map((data, index) => (
             <Card key={`${data.subreddit}-${index}`} className="relative overflow-hidden border-2 hover:shadow-lg transition-shadow">
@@ -630,27 +704,33 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         )}
       </div>
 
-      {/* Reddit Posts Section with Loading Indicator */}
+      {/* Reddit Posts Section with Enhanced Loading */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900 font-helvetica">Relevant Posts & AI Comments</h2>
-          {isGeneratingPosts && (
+          {(isGeneratingPosts || isLoadingPosts) && (
             <div className="flex items-center gap-2 text-marketing-purple">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium font-helvetica">Generating posts and AI comments...</span>
+              <span className="text-sm font-medium font-helvetica">
+                {generationStep || 'Loading posts...'}
+              </span>
             </div>
           )}
         </div>
         
         {isLoadingPosts ? (
           <div className="space-y-4">
-            {isGeneratingPosts && (
+            {(isGeneratingPosts || generationStep) && (
               <div className="flex items-center justify-center py-8 bg-gradient-to-r from-marketing-purple/5 to-purple-50 rounded-lg border">
                 <div className="flex items-center gap-3">
                   <Loader2 className="h-6 w-6 animate-spin text-marketing-purple" />
                   <div className="text-center">
-                    <p className="font-medium text-marketing-purple font-helvetica">Analyzing relevant Reddit posts...</p>
-                    <p className="text-sm text-gray-600 font-helvetica">Generating AI-powered engagement comments</p>
+                    <p className="font-medium text-marketing-purple font-helvetica">
+                      {generationStep || 'Analyzing relevant Reddit posts...'}
+                    </p>
+                    <p className="text-sm text-gray-600 font-helvetica">
+                      {generationStep.includes('comments') ? 'Creating personalized engagement strategies' : 'Finding high-engagement opportunities'}
+                    </p>
                   </div>
                 </div>
               </div>
