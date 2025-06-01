@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, Reddit } from 'lucide-react';
+import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, MessageSquare } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Badge } from '@/components/ui/badge';
 import { SessionManager } from '@/utils/sessionManager';
@@ -235,7 +235,7 @@ User Question: ${inputMessage}`;
                 <span className={`text-sm font-medium ${isRedditMode ? 'text-marketing-purple' : 'text-gray-500'}`}>
                   Reddit Focus
                 </span>
-                <Reddit className="h-5 w-5 text-orange-500" />
+                <MessageSquare className="h-5 w-5 text-orange-500" />
               </div>
             </div>
             
