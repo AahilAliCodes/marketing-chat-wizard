@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -191,17 +192,27 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
 
-    // Prepare context for AI
+    // Prepare context for AI with system instructions for response length and focus
     let enhancedMessage = inputMessage;
+    const systemInstructions = isRedditMode 
+      ? "You are a Reddit marketing expert. Provide concise, actionable advice in 5-6 sentences maximum. Focus specifically on Reddit strategies, subreddits, posting techniques, and Reddit community engagement. Do not mention other marketing channels unless directly asked."
+      : "You are a general marketing consultant. Provide concise, actionable advice in 5-6 sentences maximum. Cover various marketing channels and strategies as appropriate for the question.";
+
     if (websiteAnalysis && websiteUrl) {
       const keyFeatures = websiteAnalysis.key_features || [];
       const marketingAngles = websiteAnalysis.marketing_angles || [];
       
-      enhancedMessage = `Website: ${websiteUrl}
+      enhancedMessage = `${systemInstructions}
+
+Website: ${websiteUrl}
 Business: ${websiteAnalysis.business_description || 'Not available'}
 Target Audience: ${websiteAnalysis.target_audience || 'Not available'}
 Key Features: ${keyFeatures.join(', ')}
 Marketing Angles: ${marketingAngles.join(', ')}
+
+User Question: ${inputMessage}`;
+    } else {
+      enhancedMessage = `${systemInstructions}
 
 User Question: ${inputMessage}`;
     }
@@ -244,29 +255,29 @@ User Question: ${inputMessage}`;
     setMessages([welcomeMessage]);
   };
 
-  const getQuickPrompts = () => {
+  const getExamplePrompts = () => {
     if (isRedditMode) {
       return [
         "Find the best subreddits for my business",
-        "Create engaging Reddit post ideas",
-        "Analyze my target audience for Reddit",
-        "Write authentic Reddit comments for engagement",
-        "Generate a Reddit advertising strategy",
-        "Create Reddit-specific content that doesn't look like ads"
+        "Write a Reddit post that doesn't sound like an ad",
+        "How do I build karma before promoting?",
+        "Create a Reddit comment strategy",
+        "What are Reddit's self-promotion rules?",
+        "Generate post titles that get upvotes"
       ];
     } else {
       return [
-        "Create a comprehensive marketing strategy",
-        "Develop social media content ideas",
-        "Design an email marketing campaign",
-        "Build an SEO content plan",
-        "Create a brand positioning strategy",
-        "Generate influencer marketing ideas"
+        "Create a social media content calendar",
+        "Write compelling email subject lines",
+        "Develop a brand positioning strategy",
+        "Plan an influencer marketing campaign",
+        "Create a customer retention strategy",
+        "Design a lead generation funnel"
       ];
     }
   };
 
-  const handleQuickPrompt = (prompt: string) => {
+  const handleExamplePrompt = (prompt: string) => {
     setInputMessage(prompt);
   };
 
@@ -337,17 +348,21 @@ User Question: ${inputMessage}`;
                     {isRedditMode ? "Ask me about Reddit marketing strategies!" : "Ask me about marketing strategies!"}
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
-                    {getQuickPrompts().map((prompt, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="text-left h-auto p-3 hover:bg-marketing-purple/5 hover:border-marketing-purple"
-                        onClick={() => handleQuickPrompt(prompt)}
-                      >
-                        {prompt}
-                      </Button>
-                    ))}
+                  {/* Example Prompts */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Try these example prompts:</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                      {getExamplePrompts().map((prompt, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          className="text-left h-auto p-3 hover:bg-marketing-purple/5 hover:border-marketing-purple"
+                          onClick={() => handleExamplePrompt(prompt)}
+                        >
+                          {prompt}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -401,6 +416,29 @@ User Question: ${inputMessage}`;
               )}
               <div ref={messagesEndRef} />
             </ScrollArea>
+
+            {/* Example Prompts Bar - shown when there are messages */}
+            {messages.length > 0 && (
+              <div className="border-t border-b px-4 py-2 bg-gray-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-marketing-purple" />
+                  <span className="text-xs font-medium text-gray-600">Quick prompts:</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {getExamplePrompts().slice(0, 4).map((prompt, index) => (
+                    <Button
+                      key={index}
+                      variant="ghost"
+                      size="sm"
+                      className="flex-shrink-0 text-xs h-7 px-2 hover:bg-marketing-purple/10"
+                      onClick={() => handleExamplePrompt(prompt)}
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Input Form */}
             <div className="border-t p-4">
