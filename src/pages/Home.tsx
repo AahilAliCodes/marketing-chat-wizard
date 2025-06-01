@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send } from 'lucide-react';
+import { Send, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -57,6 +58,22 @@ const Home = () => {
     }
   };
 
+  const handleGoToChat = () => {
+    if (websiteUrl) {
+      const formattedUrl = websiteUrl.toLowerCase().startsWith('http') 
+        ? websiteUrl.toLowerCase() 
+        : `https://${websiteUrl.toLowerCase()}`;
+      
+      navigate('/chat', {
+        state: {
+          websiteUrl: formattedUrl
+        }
+      });
+    } else {
+      navigate('/chat');
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAnalyzeWebsite();
@@ -77,9 +94,6 @@ const Home = () => {
           </div>
           <span className="text-xl font-bold">BLASTari</span>
         </div>
-        {/* <a href="/auth" className="text-marketing-purple font-medium">
-          Account
-        </a> */}
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
@@ -91,11 +105,7 @@ const Home = () => {
           Autopilot <span className="text-red-600">Reddit</span> ad campaigns — zero karma needed
         </h1>
         
-        {/* <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-3xl">
-          MarketGPT uses AI to analyze your business needs and create optimized marketing strategies tailored to your specific goals.
-        </p> */}
-        
-        <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8">
+        <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8 mb-8">
           <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">
             <input 
               type="text" 
@@ -114,9 +124,22 @@ const Home = () => {
               <Send className="h-5 w-5" />
             </button>
           </div>
+          
+          <div className="flex items-center justify-center mt-4">
+            <span className="text-gray-400 text-sm">or</span>
+          </div>
+          
+          <Button
+            onClick={handleGoToChat}
+            variant="outline"
+            className="w-full mt-4 border-marketing-purple text-marketing-purple hover:bg-marketing-purple hover:text-white"
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Start Marketing Chat
+          </Button>
         </div>
         
-        <div className="text-sm text-gray-500 max-w-2xl mt-12">
+        <div className="text-sm text-gray-500 max-w-2xl">
           Start crafting intelligent marketing campaigns that convert with our AI-powered platform. No credit card required to begin.
         </div>
       </main>

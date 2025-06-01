@@ -1,15 +1,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import Topbar from '@/components/Topbar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MessageCircle, Sparkles } from 'lucide-react';
+import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, Reddit } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Badge } from '@/components/ui/badge';
+import { SessionManager } from '@/utils/sessionManager';
 
 interface ChatMessage {
   id: string;
@@ -18,11 +19,22 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface WebsiteAnalysis {
+  website_url: string;
+  business_description: string;
+  target_audience: string;
+  key_features: string[];
+  marketing_angles: string[];
+}
+
 const Chat = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [isRedditMode, setIsRedditMode] = useState(true);
+  const [websiteAnalysis, setWebsiteAnalysis] = useState<WebsiteAnalysis | null>(null);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +42,64 @@ const Chat = () => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  // Load website context from location state or session
+  useEffect(() => {
+    if (location.state?.websiteUrl) {
+      setWebsiteUrl(location.state.websiteUrl);
+      if (location.state.websiteAnalysis) {
+        setWebsiteAnalysis(location.state.websiteAnalysis);
+      }
+    }
+  }, [location.state]);
+
+  // Load chat history from session storage
+  useEffect(() => {
+    const chatKey = `chat_${websiteUrl || 'general'}_${isRedditMode ? 'reddit' : 'marketing'}`;
+    const savedChat = SessionManager.getSessionData(chatKey);
+    
+    if (savedChat && savedChat.messages) {
+      const restoredMessages = savedChat.messages.map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp)
+      }));
+      setMessages(restoredMessages);
+    } else {
+      // Initialize with welcome message
+      const welcomeMessage = {
+        id: 'welcome',
+        role: 'assistant' as const,
+        content: getWelcomeMessage(),
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [websiteUrl, isRedditMode]);
+
+  // Save chat history to session storage
+  useEffect(() => {
+    if (messages.length > 0) {
+      const chatKey = `chat_${websiteUrl || 'general'}_${isRedditMode ? 'reddit' : 'marketing'}`;
+      SessionManager.setSessionData(chatKey, {
+        messages,
+        websiteUrl,
+        isRedditMode,
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  }, [messages, websiteUrl, isRedditMode]);
+
+  const getWelcomeMessage = () => {
+    if (websiteUrl && websiteAnalysis) {
+      return isRedditMode 
+        ? `Hi! I'm your Reddit marketing assistant for ${websiteUrl}. I have your website analysis and I'm ready to help you create targeted Reddit campaigns, find relevant subreddits, and craft authentic posts that will resonate with your audience. 🚀`
+        : `Hello! I'm your marketing consultant for ${websiteUrl}. With your website analysis in hand, I can help you develop comprehensive marketing strategies across all channels - from social media to email marketing, SEO, and beyond. Let's grow your business! 📈`;
+    } else {
+      return isRedditMode
+        ? "Hi! I'm your Reddit marketing assistant. To get started, please enter a website URL above so I can provide targeted Reddit marketing strategies and subreddit recommendations. 🚀"
+        : "Hello! I'm your marketing consultant. Enter a website URL to get personalized marketing strategies across all channels - social media, email, SEO, content marketing, and more! 📈";
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,9 +124,22 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
 
+    // Prepare context for AI
+    let enhancedMessage = inputMessage;
+    if (websiteAnalysis && websiteUrl) {
+      enhancedMessage = `Website: ${websiteUrl}
+Business: ${websiteAnalysis.business_description}
+Target Audience: ${websiteAnalysis.target_audience}
+Key Features: ${websiteAnalysis.key_features.join(', ')}
+Marketing Angles: ${websiteAnalysis.marketing_angles.join(', ')}
+
+User Question: ${inputMessage}`;
+    }
+
     // Get AI response
     if (websiteUrl) {
-      const response = await sendMessageToAI(websiteUrl, inputMessage, 'reddit');
+      const campaignType = isRedditMode ? 'reddit' : 'general_marketing';
+      const response = await sendMessageToAI(websiteUrl, enhancedMessage, campaignType);
       
       if (response) {
         const aiMessage: ChatMessage = {
@@ -68,155 +151,227 @@ const Chat = () => {
         setMessages(prev => [...prev, aiMessage]);
       }
     } else {
-      // If no website URL, provide a helpful response
+      // Provide guidance message
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Hi! I'm your Reddit marketing assistant. To get started, please enter a website URL above so I can help you create targeted Reddit marketing strategies, find relevant subreddits, and craft engaging posts that will resonate with your audience.",
+        content: isRedditMode 
+          ? "To provide personalized Reddit marketing advice, please enter your website URL above. This helps me understand your business and create targeted strategies!"
+          : "To provide personalized marketing strategies, please enter your website URL above. This helps me analyze your business and create comprehensive marketing plans!",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
     }
   };
 
-  const quickPrompts = [
-    "Help me find the best subreddits for my website",
-    "Create engaging Reddit post ideas",
-    "Analyze my target audience for Reddit marketing",
-    "Write authentic Reddit comments for engagement"
-  ];
+  const handleModeToggle = () => {
+    setIsRedditMode(!isRedditMode);
+    // Clear current messages when switching modes
+    const welcomeMessage = {
+      id: `welcome-${Date.now()}`,
+      role: 'assistant' as const,
+      content: getWelcomeMessage(),
+      timestamp: new Date()
+    };
+    setMessages([welcomeMessage]);
+  };
+
+  const getQuickPrompts = () => {
+    if (isRedditMode) {
+      return [
+        "Find the best subreddits for my business",
+        "Create engaging Reddit post ideas",
+        "Analyze my target audience for Reddit",
+        "Write authentic Reddit comments for engagement"
+      ];
+    } else {
+      return [
+        "Create a comprehensive marketing strategy",
+        "Develop social media content ideas",
+        "Design an email marketing campaign",
+        "Build an SEO content plan"
+      ];
+    }
+  };
 
   const handleQuickPrompt = (prompt: string) => {
     setInputMessage(prompt);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Topbar />
       
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <MessageCircle className="h-8 w-8 text-marketing-purple" />
-            <h1 className="text-3xl font-bold text-gray-900">Reddit Marketing Chat</h1>
-            <Sparkles className="h-6 w-6 text-yellow-500" />
-          </div>
-          
-          <div className="mb-4">
-            <label htmlFor="website-url" className="block text-sm font-medium text-gray-700 mb-2">
-              Website URL (optional but recommended)
-            </label>
-            <input
-              id="website-url"
-              type="url"
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marketing-purple focus:border-transparent"
-            />
-          </div>
-          
-          <p className="text-gray-600">
-            Get personalized Reddit marketing advice, subreddit recommendations, and post ideas for your brand.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border h-[600px] flex flex-col">
-          <ScrollArea className="flex-1 p-6">
-            {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
-                <p className="text-gray-500 mb-6">Ask me anything about Reddit marketing strategies!</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
-                  {quickPrompts.map((prompt, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className="text-left h-auto p-3 hover:bg-marketing-purple/5 hover:border-marketing-purple"
-                      onClick={() => handleQuickPrompt(prompt)}
-                    >
-                      {prompt}
-                    </Button>
-                  ))}
-                </div>
+      <div className="flex-1 p-6">
+        <div className="h-full max-w-6xl mx-auto flex flex-col">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-8 w-8 text-marketing-purple" />
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {isRedditMode ? 'Reddit Marketing Chat' : 'Marketing Strategy Chat'}
+                </h1>
+                <Sparkles className="h-6 w-6 text-yellow-500" />
               </div>
-            ) : (
-              <div className="space-y-6">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={message.role === 'user' ? 'default' : 'secondary'}>
-                          {message.role === 'user' ? 'You' : 'AI Assistant'}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {message.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <Card className={message.role === 'user' ? 'bg-marketing-purple text-white' : 'bg-gray-50'}>
-                        <CardContent className="p-4">
-                          <div className="whitespace-pre-wrap break-words">
-                            {message.content}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%]">
-                      <Badge variant="secondary" className="mb-2">AI Assistant</Badge>
-                      <Card className="bg-gray-50">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="animate-pulse flex space-x-1">
-                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                            </div>
-                            <span className="text-gray-500 text-sm">Thinking...</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                )}
+              
+              {/* Mode Toggle */}
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-medium ${!isRedditMode ? 'text-marketing-purple' : 'text-gray-500'}`}>
+                  General Marketing
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleModeToggle}
+                  className="p-1"
+                >
+                  {isRedditMode ? (
+                    <ToggleRight className="h-6 w-6 text-marketing-purple" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-gray-400" />
+                  )}
+                </Button>
+                <span className={`text-sm font-medium ${isRedditMode ? 'text-marketing-purple' : 'text-gray-500'}`}>
+                  Reddit Focus
+                </span>
+                <Reddit className="h-5 w-5 text-orange-500" />
+              </div>
+            </div>
+            
+            {/* Website URL Input */}
+            <div className="mb-4">
+              <label htmlFor="website-url" className="block text-sm font-medium text-gray-700 mb-2">
+                Website URL (for personalized advice)
+              </label>
+              <input
+                id="website-url"
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://example.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marketing-purple focus:border-transparent"
+              />
+            </div>
+            
+            {websiteAnalysis && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Website Analysis Loaded:</strong> {websiteAnalysis.business_description}
+                </p>
               </div>
             )}
-            <div ref={messagesEndRef} />
-          </ScrollArea>
-
-          <div className="border-t p-4">
-            <form onSubmit={handleSubmit} className="flex gap-3">
-              <Textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask about Reddit marketing strategies, subreddit recommendations, post ideas..."
-                className="resize-none min-h-[50px] max-h-[120px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-              />
-              <Button 
-                type="submit" 
-                disabled={!inputMessage.trim() || isLoading}
-                className="self-end bg-marketing-purple hover:bg-marketing-purple/90"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-            <p className="text-xs text-gray-500 mt-2">
-              Press Enter to send, Shift+Enter for new line
+            
+            <p className="text-gray-600">
+              {isRedditMode 
+                ? "Get personalized Reddit marketing advice, subreddit recommendations, and post ideas."
+                : "Get comprehensive marketing strategies across all channels and platforms."}
             </p>
+          </div>
+
+          {/* Chat Container */}
+          <div className="flex-1 bg-white rounded-lg shadow-sm border flex flex-col">
+            <ScrollArea className="flex-1 p-6">
+              {messages.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
+                  <p className="text-gray-500 mb-6">
+                    {isRedditMode ? "Ask me about Reddit marketing strategies!" : "Ask me about marketing strategies!"}
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                    {getQuickPrompts().map((prompt, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="text-left h-auto p-3 hover:bg-marketing-purple/5 hover:border-marketing-purple"
+                        onClick={() => handleQuickPrompt(prompt)}
+                      >
+                        {prompt}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={message.role === 'user' ? 'default' : 'secondary'}>
+                            {message.role === 'user' ? 'You' : (isRedditMode ? 'Reddit Assistant' : 'Marketing Assistant')}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            {message.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <Card className={message.role === 'user' ? 'bg-marketing-purple text-white' : 'bg-gray-50'}>
+                          <CardContent className="p-4">
+                            <div className="whitespace-pre-wrap break-words">
+                              {message.content}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%]">
+                        <Badge variant="secondary" className="mb-2">
+                          {isRedditMode ? 'Reddit Assistant' : 'Marketing Assistant'}
+                        </Badge>
+                        <Card className="bg-gray-50">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="animate-pulse flex space-x-1">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                              </div>
+                              <span className="text-gray-500 text-sm">Thinking...</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </ScrollArea>
+
+            {/* Input Form */}
+            <div className="border-t p-4">
+              <form onSubmit={handleSubmit} className="flex gap-3">
+                <Textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder={`Ask about ${isRedditMode ? 'Reddit marketing strategies' : 'marketing strategies'}...`}
+                  className="resize-none min-h-[50px] max-h-[120px]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                />
+                <Button 
+                  type="submit" 
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="self-end bg-marketing-purple hover:bg-marketing-purple/90"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+              <p className="text-xs text-gray-500 mt-2">
+                Press Enter to send, Shift+Enter for new line
+              </p>
+            </div>
           </div>
         </div>
       </div>
