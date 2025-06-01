@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -195,11 +194,14 @@ const Chat = () => {
     // Prepare context for AI
     let enhancedMessage = inputMessage;
     if (websiteAnalysis && websiteUrl) {
+      const keyFeatures = websiteAnalysis.key_features || [];
+      const marketingAngles = websiteAnalysis.marketing_angles || [];
+      
       enhancedMessage = `Website: ${websiteUrl}
-Business: ${websiteAnalysis.business_description}
-Target Audience: ${websiteAnalysis.target_audience}
-Key Features: ${websiteAnalysis.key_features.join(', ')}
-Marketing Angles: ${websiteAnalysis.marketing_angles.join(', ')}
+Business: ${websiteAnalysis.business_description || 'Not available'}
+Target Audience: ${websiteAnalysis.target_audience || 'Not available'}
+Key Features: ${keyFeatures.join(', ')}
+Marketing Angles: ${marketingAngles.join(', ')}
 
 User Question: ${inputMessage}`;
     }
