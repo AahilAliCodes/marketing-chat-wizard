@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Topbar from '@/components/Topbar';
 import SubredditAnalytics from '@/components/SubredditAnalytics';
 import LoadingScreen from '@/components/LoadingScreen';
+import AgenticWorkflow from '@/components/AgenticWorkflow';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,8 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
+  const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
+  const [isAnalysisComplete, setIsAnalysisComplete] = useState<boolean>(false);
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,6 +29,12 @@ const Dashboard = () => {
 
   // Get state from location if available
   const state = location.state as LocationState;
+
+  const handleWorkflowComplete = () => {
+    setShowWorkflow(false);
+    setIsAnalyzing(false);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     // Initialize session for this analysis
@@ -35,6 +44,8 @@ const Dashboard = () => {
     if (state?.isAnalyzing && state?.websiteUrl) {
       setIsAnalyzing(true);
       setWebsiteUrl(state.websiteUrl);
+      setShowWorkflow(true);
+      setIsAnalysisComplete(false);
       
       // Store current website analysis in session
       SessionManager.setSessionData('current_analysis', {
@@ -100,8 +111,11 @@ const Dashboard = () => {
             console.log('Website analysis completed successfully');
           }
           
+          setIsAnalysisComplete(true);
+          
         } catch (error: any) {
           console.error('Analysis error:', error);
+          setIsAnalysisComplete(true);
           
           // Check for the specific edge function error
           if (error.message?.includes('Edge Function returned a non-2xx status code') || 
@@ -130,8 +144,7 @@ const Dashboard = () => {
           // Keep loading for at least 3 seconds total
           const remainingTime = Math.max(0, 3000 - (Date.now() - startTime));
           setTimeout(() => {
-            setIsAnalyzing(false);
-            setIsLoading(false);
+            setIsAnalysisComplete(true);
           }, remainingTime);
         }
       };
@@ -183,14 +196,23 @@ const Dashboard = () => {
     }
   }, [state?.isAnalyzing, state?.websiteUrl, toast, navigate]);
 
-  // Show loading screen during loading or analysis
-  if (isLoading || isAnalyzing) {
+  // Show workflow during analysis
+  if (showWorkflow) {
+    return (
+      <AgenticWorkflow 
+        isVisible={showWorkflow} 
+        isComplete={isAnalysisComplete}
+        onComplete={handleWorkflowComplete}
+      />
+    );
+  }
+
+  // Show loading screen during loading
+  if (isLoading) {
     return (
       <LoadingScreen 
         onComplete={() => {
-          if (!isAnalyzing) {
-            setIsLoading(false);
-          }
+          setIsLoading(false);
         }}
       />
     );
