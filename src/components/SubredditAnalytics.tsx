@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -353,7 +354,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
               <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
             </button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-md p-4" side="top">
+          <TooltipContent className="max-w-md p-4 bg-white border shadow-lg z-50" side="top">
             <div className="space-y-3">
               <h4 className="font-semibold text-lg">{kpi.title}</h4>
               <div>
