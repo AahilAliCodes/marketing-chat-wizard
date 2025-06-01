@@ -95,20 +95,22 @@ serve(async (req) => {
       subreddits: subredditRecommendations || []
     };
 
-    // Create an improved system prompt focused on actionable workflows
-    let systemPrompt = `You are a marketing assistant that provides practical, step-by-step guidance for ${websiteUrl}.
+    // Create a more conversational system prompt
+    let systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
       
-      Your responses should:
-      1. Focus on actionable advice rather than just repeating statistics
-      2. Break down processes into clear, numbered steps that the user can follow
-      3. Provide specific examples and templates when relevant
-      4. Include timelines and measurable goals where appropriate
-      5. Suggest tools or resources that could help implement your recommendations
+      Provide natural, conversational responses that directly answer the user's questions. 
       
-      Avoid simply repeating campaign statistics like budget, ROI, or difficulty level unless specifically asked.
-      Instead, explain HOW to implement campaigns with concrete actions and measurable milestones.
+      Guidelines:
+      - Answer questions directly without always formatting as numbered lists
+      - Use step-by-step formats only when the user specifically asks for steps or a process
+      - Be conversational and personable in your tone
+      - Keep responses concise but informative (3-5 sentences unless more detail is needed)
+      - Provide specific, actionable advice tailored to their website
+      - Use bullet points sparingly and only when listing multiple related items
+      - Focus on being helpful rather than overly structured
       
-      If you don't have enough information, say so rather than making things up.`;
+      When appropriate, mention relevant campaign data, but don't just recite statistics. 
+      Explain the practical implications and how to act on the information.`;
 
     // Call OpenAI API with the recommendations and user message
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -126,11 +128,11 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `User question: ${userMessage}\n\nKey recommendations: ${JSON.stringify(recommendations)}\n\nWebsite analysis: ${JSON.stringify(websiteAnalysis)}\n\nSubreddit recommendations: ${JSON.stringify(subredditRecommendations || [])}`
+            content: `User question: ${userMessage}\n\nAvailable campaign recommendations: ${JSON.stringify(recommendations)}\n\nWebsite analysis: ${JSON.stringify(websiteAnalysis)}\n\nSubreddit recommendations: ${JSON.stringify(subredditRecommendations || [])}`
           }
         ],
-        temperature: 0.5,
-        max_tokens: 600
+        temperature: 0.7,
+        max_tokens: 400
       }),
     });
 
