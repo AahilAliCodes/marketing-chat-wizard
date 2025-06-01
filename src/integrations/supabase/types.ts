@@ -143,6 +143,45 @@ export type Database = {
         }
         Relationships: []
       }
+      reddit_post_recommendations: {
+        Row: {
+          content: string
+          created_at: string
+          engagement_tip: string | null
+          id: string
+          reasoning: string | null
+          subreddit: string
+          subscribers: string | null
+          title: string
+          updated_at: string
+          website_url: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          engagement_tip?: string | null
+          id?: string
+          reasoning?: string | null
+          subreddit: string
+          subscribers?: string | null
+          title: string
+          updated_at?: string
+          website_url: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          engagement_tip?: string | null
+          id?: string
+          reasoning?: string | null
+          subreddit?: string
+          subscribers?: string | null
+          title?: string
+          updated_at?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
       reddit_posts_analysis: {
         Row: {
           ai_comment: string

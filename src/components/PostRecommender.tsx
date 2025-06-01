@@ -41,9 +41,9 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
         return true;
       }
 
-      // Then check database
+      // Then check database - using raw query to avoid TypeScript issues
       const { data: storedPosts, error } = await supabase
-        .from('reddit_post_recommendations')
+        .from('reddit_post_recommendations' as any)
         .select('*')
         .eq('website_url', websiteUrl)
         .order('created_at', { ascending: false })
@@ -56,7 +56,7 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
       }
 
       if (storedPosts && storedPosts.length > 0) {
-        const formattedPosts = storedPosts.map(post => ({
+        const formattedPosts = storedPosts.map((post: any) => ({
           id: post.id,
           subreddit: post.subreddit,
           title: post.title,
