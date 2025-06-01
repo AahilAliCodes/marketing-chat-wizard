@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Research from "./pages/Research";
+import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import SharedChat from "./pages/SharedChat";
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/research" element={<Research />} />
+              <Route path="/chat" element={<Chat />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/shared-chat/:chatId" element={<SharedChat />} />
               <Route path="/analysis-error" element={<AnalysisError />} />

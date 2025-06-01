@@ -47,6 +47,14 @@ const Topbar = () => {
               >
                 Research
               </Link>
+              <Link 
+                to="/chat" 
+                className={`text-white hover:text-white/80 transition-colors ${
+                  location.pathname === '/chat' ? 'border-b-2 border-white pb-1' : ''
+                }`}
+              >
+                Chat
+              </Link>
             </nav>
           )}
         </div>
