@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -177,6 +176,18 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Function to clean markdown characters from AI responses
+  const cleanMarkdownFormatting = (text: string) => {
+    return text
+      .replace(/#{1,6}\s*/g, '') // Remove # headers
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove ** bold formatting
+      .replace(/\*(.*?)\*/g, '$1') // Remove * italic formatting
+      .replace(/_{1,2}(.*?)_{1,2}/g, '$1') // Remove _ formatting
+      .replace(/`(.*?)`/g, '$1') // Remove ` code formatting
+      .replace(/~~(.*?)~~/g, '$1') // Remove ~~ strikethrough
+      .trim();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
@@ -223,10 +234,13 @@ User Question: ${inputMessage}`;
       const response = await sendMessageToAI(websiteUrl || 'general', enhancedMessage, campaignType);
       
       if (response) {
+        // Clean the AI response to remove markdown formatting
+        const cleanedResponse = cleanMarkdownFormatting(response.response);
+        
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: response.response,
+          content: cleanedResponse,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiMessage]);
