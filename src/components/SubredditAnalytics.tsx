@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info } from 'lucide-react';
+import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -75,6 +74,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -221,11 +221,19 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
 
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        const topSubreddits = analysisData.recommendations.slice(0, 3);
+        // Filter subreddits by minimum activity threshold
+        const activeSubreddits = analysisData.recommendations.filter((r: any) => {
+          const subscribers = parseInt(r.subscribers?.replace(/[^\d]/g, '') || '0');
+          return subscribers >= 1000; // Minimum 1K subscribers
+        }).slice(0, 3);
+        
+        if (activeSubreddits.length === 0) {
+          throw new Error('No subreddits found that meet minimum activity requirements (1K+ subscribers)');
+        }
         
         const { data: analyticsData, error: analyticsError } = await supabase.functions.invoke('reddit-analytics', {
           body: { 
-            subreddits: topSubreddits.map((r: any) => r.subreddit),
+            subreddits: activeSubreddits.map((r: any) => r.subreddit),
             websiteUrl
           }
         });
@@ -234,11 +242,13 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           throw new Error(analyticsError.message);
         }
         
-        const formattedAnalytics = analyticsData.analytics || [];
-        setSubredditData(formattedAnalytics);
+        // Filter analytics by engagement rate threshold
+        const qualityAnalytics = analyticsData.analytics?.filter((a: any) => a.engagement_rate >= 0.005) || [];
+        
+        setSubredditData(qualityAnalytics);
         
         // Cache in session
-        SessionManager.setSessionData(`analytics_${websiteUrl}`, formattedAnalytics);
+        SessionManager.setSessionData(`analytics_${websiteUrl}`, qualityAnalytics);
         
         if (forceRegenerate) {
           toast({
@@ -271,6 +281,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     }
     
     setIsLoadingPosts(true);
+    setIsGeneratingPosts(true);
+    
     try {
       console.log('Generating new Reddit posts for:', websiteUrl);
       
@@ -286,10 +298,22 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
       
       const posts = data.posts || [];
-      setRedditPosts(posts);
+      
+      // Validate posts have required content
+      const validPosts = posts.filter((post: RedditPost) => 
+        post.title && post.title.trim().length > 0 && 
+        post.content && post.content.trim().length > 0 &&
+        post.aiComment && post.aiComment.trim().length > 0
+      );
+      
+      if (validPosts.length === 0) {
+        throw new Error('No valid posts with AI comments could be generated');
+      }
+      
+      setRedditPosts(validPosts);
       
       // Cache in session
-      SessionManager.setSessionData(`posts_${websiteUrl}`, posts);
+      SessionManager.setSessionData(`posts_${websiteUrl}`, validPosts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
       toast({
@@ -299,6 +323,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       });
     } finally {
       setIsLoadingPosts(false);
+      setIsGeneratingPosts(false);
     }
   };
 
@@ -442,11 +467,11 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Reddit Analytics Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 font-helvetica">Reddit Analytics Dashboard</h1>
         <Button
           onClick={handleRegenerate}
           disabled={isLoadingAnalytics || isRegenerating}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 font-helvetica"
         >
           <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
           Regenerate
@@ -549,15 +574,36 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         )}
       </div>
 
-      {/* Reddit Posts Section */}
+      {/* Reddit Posts Section with Loading Indicator */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Relevant Posts & AI Comments</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900 font-helvetica">Relevant Posts & AI Comments</h2>
+          {isGeneratingPosts && (
+            <div className="flex items-center gap-2 text-marketing-purple">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm font-medium font-helvetica">Generating posts and AI comments...</span>
+            </div>
+          )}
+        </div>
         
         {isLoadingPosts ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, index) => (
-              <PostSkeleton key={index} />
-            ))}
+          <div className="space-y-4">
+            {isGeneratingPosts && (
+              <div className="flex items-center justify-center py-8 bg-gradient-to-r from-marketing-purple/5 to-purple-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-marketing-purple" />
+                  <div className="text-center">
+                    <p className="font-medium text-marketing-purple font-helvetica">Analyzing relevant Reddit posts...</p>
+                    <p className="text-sm text-gray-600 font-helvetica">Generating AI-powered engagement comments</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, index) => (
+                <PostSkeleton key={index} />
+              ))}
+            </div>
           </div>
         ) : redditPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -592,14 +638,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500">No relevant posts found.</p>
+            <p className="text-gray-500 font-helvetica">No relevant posts found.</p>
           </div>
         )}
       </div>
 
       {!isLoadingAnalytics && subredditData.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No subreddit data available. Try regenerating the analysis.</p>
+          <p className="text-gray-500 font-helvetica">No subreddit data available. Try regenerating the analysis.</p>
         </div>
       )}
     </div>

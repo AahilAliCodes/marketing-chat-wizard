@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Sparkles } from 'lucide-react';
@@ -36,7 +35,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       return;
     }
 
-    const stepDuration = 1500;
+    const stepDuration = 5000; // 5 seconds per step
     const totalSteps = generationSteps.length;
 
     // Handle completion immediately when isComplete becomes true
@@ -45,17 +44,18 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       setProgress(100);
       setHasCompleted(true);
       
-      // Complete immediately when process is done, no artificial delay
+      // Complete immediately when process is done
       setTimeout(() => {
         onComplete?.();
       }, 300);
       return;
     }
 
+    // Step progression - advance steps every 5 seconds
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => {
         const nextStep = prev + 1;
-        if (nextStep >= totalSteps) {
+        if (nextStep >= totalSteps || isComplete) {
           clearInterval(stepInterval);
           return totalSteps - 1;
         }
@@ -63,6 +63,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       });
     }, stepDuration);
 
+    // Progress bar - goes from 0 to 100 in 25 seconds (400ms intervals)
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         // If process is complete, jump to 100%
@@ -70,13 +71,18 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
           return 100;
         }
         
-        // Slow down significantly at 72% to wait for actual completion
-        let increment = prev < 72 ? 3 : 0.5;
+        // Increment by 1% every 250ms to reach 100% in 25 seconds
+        const increment = 1;
+        const newProgress = Math.min(prev + increment, 100);
         
-        const newProgress = Math.min(prev + increment, isComplete ? 100 : 72);
+        // If we reach 100% but process isn't complete, stay at 99%
+        if (newProgress >= 100 && !isComplete) {
+          return 99;
+        }
+        
         return newProgress;
       });
-    }, 80);
+    }, 250); // 250ms intervals for smooth animation
 
     return () => {
       clearInterval(stepInterval);
