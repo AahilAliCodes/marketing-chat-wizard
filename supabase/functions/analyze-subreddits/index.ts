@@ -1,3 +1,4 @@
+
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -33,6 +34,21 @@ serve(async (req) => {
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured in the server");
     }
+
+    // Fetch website analysis for context
+    const { data: websiteAnalysis, error: analysisError } = await supabase
+      .from('website_analyses')
+      .select('*')
+      .eq('website_url', websiteUrl)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (analysisError) {
+      console.error('Error fetching website analysis:', analysisError);
+    }
+
+    console.log('Website analysis found:', websiteAnalysis ? 'Yes' : 'No');
 
     // Check if we have cached recommendations
     const { data: cachedRecommendations, error: cacheError } = await supabase
@@ -97,7 +113,7 @@ serve(async (req) => {
         console.log('Not enough cached recommendations, generating new ones');
         
         // Generate 15 new recommendations
-        const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 15);
+        const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, excludeSubreddits, 15, websiteAnalysis);
         
         // Ensure uniqueness
         const uniqueRecommendations = removeDuplicateSubreddits(recommendations);
@@ -187,7 +203,7 @@ serve(async (req) => {
     
     // Otherwise generate new recommendations (initial load - 15 recommendations)
     console.log('Generating initial recommendations');
-    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 15);
+    const recommendations = await generateSubredditRecommendations(websiteUrl, campaignType, [], 15, websiteAnalysis);
     
     // Ensure uniqueness
     const uniqueRecommendations = removeDuplicateSubreddits(recommendations);
@@ -287,11 +303,27 @@ function removeDuplicateSubreddits(recommendations: any[], nameField: string = '
   return unique;
 }
 
-async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 15) {
+async function generateSubredditRecommendations(websiteUrl: string, campaignType: string, excludeSubreddits: string[] = [], requestCount: number = 15, websiteAnalysis: any = null) {
   try {
     const excludeText = excludeSubreddits.length > 0 
       ? `\n\nIMPORTANT: Do NOT recommend any of these subreddits as they have already been suggested: ${excludeSubreddits.join(', ')}. Make sure all ${requestCount} recommendations are completely different from these excluded subreddits. Generate ${requestCount} completely NEW and UNIQUE subreddit recommendations with NO DUPLICATES.`
       : `\n\nGenerate exactly ${requestCount} unique subreddit recommendations with NO DUPLICATES. Each subreddit name must be different from all others in the list.`;
+
+    // Build website context from analysis
+    let websiteContext = `Website URL: ${websiteUrl}`;
+    
+    if (websiteAnalysis) {
+      websiteContext += `
+      
+Website Analysis:
+- Product/Service: ${websiteAnalysis.product_overview || 'Not specified'}
+- Target Audience: ${websiteAnalysis.target_audience_type || 'Not specified'}
+- Target Segments: ${websiteAnalysis.target_audience_segments?.join(', ') || 'Not specified'}
+- Core Value Proposition: ${websiteAnalysis.core_value_proposition || 'Not specified'}
+- Business Goals: ${websiteAnalysis.goals?.join(', ') || 'Not specified'}
+- Current Stage: ${websiteAnalysis.current_stage || 'Not specified'}
+- Tone & Personality: ${websiteAnalysis.tone_and_personality || 'Not specified'}`;
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -304,11 +336,19 @@ async function generateSubredditRecommendations(websiteUrl: string, campaignType
         messages: [
           {
             role: "system",
-            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend exactly ${requestCount} UNIQUE subreddits where the website owner should engage. Each subreddit must be different and unique - NO DUPLICATES allowed. Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix. Prioritize well-established subreddits with active communities (1000+ members preferred).${excludeText}`
+            content: `You are an expert Reddit marketing strategist. Analyze the provided website and recommend exactly ${requestCount} UNIQUE subreddits where the website owner should engage. Each subreddit must be different and unique - NO DUPLICATES allowed. 
+
+Focus on communities that align with their target audience and would be receptive to their content without being overtly promotional. Use the detailed website analysis provided to understand the ACTUAL business, product, and target audience - do not just rely on the domain name.
+
+For each subreddit, provide the name and reason it's a good fit. Respond with JSON data that includes "subreddits" as an array of objects. Each object should have "name" and "reason" fields. The "name" field should not include the "r/" prefix. Prioritize well-established subreddits with active communities (1000+ members preferred).${excludeText}`
           },
           {
             role: "user",
-            content: `Website URL: ${websiteUrl}\nCampaign Type: ${campaignType}\n\nPlease recommend exactly ${requestCount} UNIQUE subreddits where this business can engage effectively. Each subreddit must have a different name - absolutely NO DUPLICATES. Focus on active, well-established communities with good engagement rates. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
+            content: `${websiteContext}
+            
+Campaign Type: ${campaignType}
+
+Please recommend exactly ${requestCount} UNIQUE subreddits where this business can engage effectively based on the website analysis above. Each subreddit must have a different name - absolutely NO DUPLICATES. Focus on active, well-established communities with good engagement rates that match the actual business described in the analysis. Return the data in JSON format with a "subreddits" array containing objects with "name" and "reason" fields. Do not include the "r/" prefix in the name field.${excludeText}`
           }
         ],
         temperature: 0.8,

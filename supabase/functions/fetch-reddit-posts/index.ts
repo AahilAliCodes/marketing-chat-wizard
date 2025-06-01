@@ -1,6 +1,8 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +13,11 @@ const corsHeaders = {
 const REDDIT_CLIENT_ID = Deno.env.get('REDDIT_CLIENT_ID');
 const REDDIT_SECRET_KEY = Deno.env.get('REDDIT_SECRET_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+
+// Create a Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,9 +39,24 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // First, analyze the website to understand the main product
+    // Fetch website analysis for context
+    const { data: websiteAnalysis, error: analysisError } = await supabase
+      .from('website_analyses')
+      .select('*')
+      .eq('website_url', websiteUrl)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (analysisError) {
+      console.error('Error fetching website analysis:', analysisError);
+    }
+
+    console.log('Website analysis found for posts:', websiteAnalysis ? 'Yes' : 'No');
+
+    // Analyze the website using stored analysis or fallback
     console.log('Analyzing website for product context:', websiteUrl);
-    const productAnalysis = await analyzeWebsiteProduct(websiteUrl);
+    const productAnalysis = websiteAnalysis ? formatWebsiteAnalysis(websiteAnalysis) : await analyzeWebsiteProduct(websiteUrl);
 
     // Get Reddit access token
     const authResponse = await fetch('https://www.reddit.com/api/v1/access_token', {
@@ -136,6 +158,20 @@ serve(async (req) => {
   }
 });
 
+function formatWebsiteAnalysis(analysis: any) {
+  return {
+    productName: analysis.product_overview?.split(' ')[0] || 'Product',
+    category: analysis.target_audience_type || 'general',
+    mainBenefits: analysis.goals || ['improved efficiency'],
+    targetAudience: analysis.target_audience_segments?.join(', ') || 'general users',
+    keywords: [
+      analysis.product_overview?.toLowerCase(),
+      analysis.core_value_proposition?.toLowerCase(),
+      ...analysis.target_audience_segments?.map((s: string) => s.toLowerCase()) || []
+    ].filter(Boolean)
+  };
+}
+
 async function analyzeWebsiteProduct(websiteUrl: string) {
   try {
     const response = await fetch(websiteUrl);
@@ -226,7 +262,7 @@ function checkProductRelevance(text: string, productAnalysis: any): boolean {
   
   // Check if text contains product keywords
   const hasKeywords = keywords.some((keyword: string) => 
-    text.includes(keyword.toLowerCase())
+    keyword && text.includes(keyword.toLowerCase())
   );
   
   // Check if text relates to product category
@@ -234,8 +270,8 @@ function checkProductRelevance(text: string, productAnalysis: any): boolean {
   
   // Check if text mentions similar benefits/problems
   const hasBenefitRelation = benefits.some((benefit: string) => 
-    text.includes(benefit.toLowerCase()) || 
-    text.includes(benefit.toLowerCase().replace('improved ', '').replace('better ', ''))
+    benefit && (text.includes(benefit.toLowerCase()) || 
+    text.includes(benefit.toLowerCase().replace('improved ', '').replace('better ', '')))
   );
   
   return hasKeywords || hasCategory || hasBenefitRelation;
