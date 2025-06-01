@@ -80,7 +80,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Enhanced function to ensure unique subreddits
+  // Function to ensure unique subreddits
   const ensureUniqueSubreddits = (subreddits: SubredditData[]) => {
     const seen = new Set();
     const unique = [];
@@ -102,11 +102,12 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       console.log('Fetching stored analytics for:', websiteUrl);
       setIsLoadingAnalytics(true);
 
-      // Use enhanced SessionManager with cookie fallback
-      const cachedData = SessionManager.getSubredditAnalytics(websiteUrl);
+      // First check session cache
+      const sessionKey = `analytics_${websiteUrl}`;
+      const cachedData = SessionManager.getSessionData(sessionKey);
       
       if (cachedData) {
-        console.log('Found cached analytics data (localStorage/cookies)');
+        console.log('Found cached analytics data');
         setSubredditData(cachedData);
         setIsLoadingAnalytics(false);
         return true;
@@ -138,8 +139,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
 
         setSubredditData(formattedData);
         
-        // Cache in enhanced session manager with cookies
-        SessionManager.setSubredditAnalytics(websiteUrl, formattedData);
+        // Cache in session
+        SessionManager.setSessionData(sessionKey, formattedData);
         
         setIsLoadingAnalytics(false);
         return true;
@@ -159,11 +160,12 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       console.log('Fetching stored posts for:', websiteUrl);
       setIsLoadingPosts(true);
 
-      // Use enhanced SessionManager with cookie fallback
-      const cachedData = SessionManager.getRedditPosts(websiteUrl);
+      // First check session cache
+      const sessionKey = `posts_${websiteUrl}`;
+      const cachedData = SessionManager.getSessionData(sessionKey);
       
       if (cachedData) {
-        console.log('Found cached posts data (localStorage/cookies)');
+        console.log('Found cached posts data');
         setRedditPosts(cachedData);
         setIsLoadingPosts(false);
         return true;
@@ -196,8 +198,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
 
         setRedditPosts(formattedPosts);
         
-        // Cache in enhanced session manager with cookies
-        SessionManager.setRedditPosts(websiteUrl, formattedPosts);
+        // Cache in session
+        SessionManager.setSessionData(sessionKey, formattedPosts);
         
         setIsLoadingPosts(false);
         return true;
@@ -234,11 +236,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       
       setGenerationStep('Analyzing subreddit recommendations...');
       
-      // Use the same logic as the Posts page for subreddit generation
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          campaignType: "General", // Same as Posts page
           forceRegenerate,
           excludeSubreddits
         }
@@ -298,9 +298,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           console.log(`Using fallback: ${uniqueFallback.length} unique subreddits by subscriber count`);
           setSubredditData(uniqueFallback);
           
-          // Cache with enhanced session manager
-          SessionManager.setSubredditAnalytics(websiteUrl, uniqueFallback);
-          
           toast({
             title: 'Analytics Generated',
             description: `Generated analytics for ${uniqueFallback.length} subreddits (using fallback criteria)`,
@@ -313,14 +310,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           
           setSubredditData(topAnalytics);
           
-          // Cache with enhanced session manager
-          SessionManager.setSubredditAnalytics(websiteUrl, topAnalytics);
-          
           toast({
             title: 'Analytics Generated',
             description: `Generated analytics for ${topAnalytics.length} high-quality unique subreddits`,
           });
         }
+        
+        // Cache in session
+        SessionManager.setSessionData(`analytics_${websiteUrl}`, subredditData);
         
         if (forceRegenerate) {
           toast({
@@ -390,8 +387,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       
       setRedditPosts(validPosts);
       
-      // Cache with enhanced session manager
-      SessionManager.setRedditPosts(websiteUrl, validPosts);
+      // Cache in session
+      SessionManager.setSessionData(`posts_${websiteUrl}`, validPosts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
       toast({
@@ -432,8 +429,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   }, [subredditData]);
 
   const handleRegenerate = async () => {
-    // Clear cached data from enhanced session manager
-    SessionManager.clearWebsiteData(websiteUrl);
+    // Clear cached data
+    SessionManager.removeSessionData(`analytics_${websiteUrl}`);
+    SessionManager.removeSessionData(`posts_${websiteUrl}`);
     
     await fetchSubredditAnalytics(true);
     if (subredditData.length > 0) {
