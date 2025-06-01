@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info, Loader2 } from 'lucide-react';
+import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -77,6 +76,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
   const [generationStep, setGenerationStep] = useState<string>('');
+  const [postsError, setPostsError] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -379,6 +379,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     setIsLoadingPosts(true);
     setIsGeneratingPosts(true);
     setGenerationStep('Analyzing relevant Reddit posts...');
+    setPostsError(''); // Clear any previous errors
     
     try {
       console.log('Generating new Reddit posts for:', websiteUrl);
@@ -406,7 +407,8 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       );
       
       if (validPosts.length === 0) {
-        throw new Error('No valid posts with AI comments could be generated');
+        setPostsError('No valid posts with AI comments could be generated. This might be due to limited relevant content in the selected subreddits or temporary Reddit API issues.');
+        return;
       }
       
       setRedditPosts(validPosts);
@@ -415,9 +417,12 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       SessionManager.setDashboardPosts(websiteUrl, validPosts);
     } catch (err: any) {
       console.error('Error fetching Reddit posts:', err);
+      const errorMessage = err.message || 'Failed to load Reddit posts';
+      setPostsError(errorMessage);
+      
       toast({
-        title: 'Error',
-        description: 'Failed to load Reddit posts',
+        title: 'Error Loading Posts',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -614,6 +619,28 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     </Card>
   );
 
+  const ErrorDisplay = ({ error }: { error: string }) => (
+    <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">
+      <div className="flex items-center justify-center mb-4">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+      </div>
+      <h3 className="text-lg font-medium text-red-800 mb-2 font-helvetica">Unable to Load Posts</h3>
+      <p className="text-red-600 mb-4 max-w-md mx-auto font-helvetica">{error}</p>
+      <Button
+        onClick={() => {
+          setPostsError('');
+          fetchRedditPosts(true);
+        }}
+        variant="outline"
+        size="sm"
+        className="border-red-300 text-red-700 hover:bg-red-50"
+      >
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Try Again
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -741,7 +768,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
           )}
         </div>
         
-        {isLoadingPosts ? (
+        {postsError ? (
+          <ErrorDisplay error={postsError} />
+        ) : isLoadingPosts ? (
           <div className="space-y-4">
             {(isGeneratingPosts || generationStep) && (
               <div className="flex items-center justify-center py-8 bg-gradient-to-r from-marketing-purple/5 to-purple-50 rounded-lg border">
