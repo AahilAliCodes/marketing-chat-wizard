@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
-import AnimatedRocket from '@/components/chat/AnimatedRocket';
 
 interface AgenticWorkflowProps {
   isVisible: boolean;
+  isComplete?: boolean;
   onComplete?: () => void;
 }
 
@@ -16,30 +16,40 @@ const generationSteps = [
   "Finalizing post ideas..."
 ];
 
-const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, onComplete }) => {
+const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, isComplete = false, onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
+  const [hasCompleted, setHasCompleted] = useState(false);
 
   useEffect(() => {
     if (!isVisible) {
       setCurrentStep(0);
       setProgress(0);
-      setIsComplete(false);
+      setHasCompleted(false);
       return;
     }
 
     const stepDuration = 2000; // 2 seconds per step
     const totalSteps = generationSteps.length;
 
+    // If the generation is complete, fast-forward to the end
+    if (isComplete && !hasCompleted) {
+      setCurrentStep(totalSteps - 1);
+      setProgress(100);
+      setHasCompleted(true);
+      setTimeout(() => {
+        onComplete?.();
+      }, 500);
+      return;
+    }
+
+    // Don't advance beyond the final step unless generation is complete
+    const maxStep = isComplete ? totalSteps : totalSteps - 1;
+
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
         const nextStep = prev + 1;
-        if (nextStep >= totalSteps) {
-          setIsComplete(true);
-          setTimeout(() => {
-            onComplete?.();
-          }, 500);
+        if (nextStep >= maxStep) {
           clearInterval(interval);
           return prev;
         }
@@ -50,7 +60,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, onComplete
     // Update progress smoothly
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        const targetProgress = ((currentStep + 1) / totalSteps) * 100;
+        const targetProgress = isComplete ? 100 : ((currentStep + 1) / totalSteps) * 90; // Cap at 90% until complete
         if (prev >= targetProgress) return prev;
         return Math.min(prev + 2, targetProgress);
       });
@@ -60,7 +70,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, onComplete
       clearInterval(interval);
       clearInterval(progressInterval);
     };
-  }, [isVisible, currentStep, onComplete]);
+  }, [isVisible, currentStep, isComplete, onComplete, hasCompleted]);
 
   if (!isVisible) return null;
 
@@ -124,7 +134,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, onComplete
                 }`}>
                   {step}
                 </span>
-                {index === currentStep && (
+                {index === currentStep && !isComplete && (
                   <div className="flex space-x-1">
                     <div className="w-1 h-1 bg-marketing-purple rounded-full animate-bounce"></div>
                     <div className="w-1 h-1 bg-marketing-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -135,7 +145,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({ isVisible, onComplete
             ))}
           </div>
 
-          {isComplete && (
+          {isComplete && hasCompleted && (
             <div className="text-center animate-fade-in">
               <div className="text-green-600 font-semibold">
                 ✨ Generation Complete!

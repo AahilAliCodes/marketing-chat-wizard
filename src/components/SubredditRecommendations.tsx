@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   const [error, setError] = useState<string | null>(null);
   const [allPreviousSubreddits, setAllPreviousSubreddits] = useState<string[]>([]);
   const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
+  const [isGenerationComplete, setIsGenerationComplete] = useState<boolean>(false);
   const { toast } = useToast();
 
   const fetchAllPreviousSubreddits = async () => {
@@ -56,6 +58,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     setIsLoading(!forceRegenerate);
     if (forceRegenerate) setIsRegenerating(true);
     setShowWorkflow(true);
+    setIsGenerationComplete(false);
     setError(null);
     
     try {
@@ -85,6 +88,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
           .slice(0, 3);
         
         setRecommendations(sortedRecommendations);
+        setIsGenerationComplete(true);
         
         if (forceRegenerate) {
           toast({
@@ -98,13 +102,12 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     } catch (err: any) {
       console.error('Error fetching subreddit recommendations:', err);
       setError(err.message || 'Failed to fetch subreddit recommendations');
+      setIsGenerationComplete(true);
       toast({
         title: 'Error',
         description: 'Failed to load subreddit recommendations',
         variant: 'destructive',
       });
-    } finally {
-      // Don't hide workflow here - let it complete naturally
     }
   };
   
@@ -139,6 +142,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     <>
       <AgenticWorkflow 
         isVisible={showWorkflow} 
+        isComplete={isGenerationComplete}
         onComplete={handleWorkflowComplete}
       />
       

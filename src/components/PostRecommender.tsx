@@ -29,6 +29,7 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
+  const [isGenerationComplete, setIsGenerationComplete] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -100,6 +101,7 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
     setIsLoading(true);
     if (forceRegenerate) setIsRegenerating(true);
     setShowWorkflow(true);
+    setIsGenerationComplete(false);
 
     try {
       console.log('Generating new post recommendations for:', websiteUrl);
@@ -117,6 +119,7 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
 
       if (data?.posts && data.posts.length > 0) {
         setPosts(data.posts);
+        setIsGenerationComplete(true);
         
         // Cache in session
         SessionManager.setSessionData(`post_recommendations_${websiteUrl}`, data.posts);
@@ -130,13 +133,12 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
       }
     } catch (err: any) {
       console.error('Error generating post recommendations:', err);
+      setIsGenerationComplete(true);
       toast({
         title: 'Error',
         description: 'Failed to generate post recommendations',
         variant: 'destructive',
       });
-    } finally {
-      // Don't hide workflow here - let it complete naturally
     }
   };
 
@@ -199,6 +201,7 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
     <>
       <AgenticWorkflow 
         isVisible={showWorkflow} 
+        isComplete={isGenerationComplete}
         onComplete={handleWorkflowComplete}
       />
       
