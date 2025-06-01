@@ -13,6 +13,9 @@ interface SubredditRecommendation {
   reason?: string;
   postTitle?: string;
   postContent?: string;
+  engagement_rate?: number;
+  subscribers?: number;
+  posts_per_day?: number;
 }
 
 interface SubredditRecommendationsProps {
@@ -72,12 +75,19 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
       }
       
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        setRecommendations(analysisData.recommendations);
+        // Sort by engagement rate (highest first) and take top 3
+        const sortedRecommendations = analysisData.recommendations
+          .sort((a: SubredditRecommendation, b: SubredditRecommendation) => 
+            (b.engagement_rate || 0) - (a.engagement_rate || 0)
+          )
+          .slice(0, 3);
+        
+        setRecommendations(sortedRecommendations);
         
         if (forceRegenerate) {
           toast({
             title: 'Success',
-            description: `Generated ${analysisData.recommendations.length} new unique subreddit recommendations`,
+            description: `Generated ${sortedRecommendations.length} new unique subreddit recommendations`,
           });
         }
       } else {
@@ -110,43 +120,88 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   const handleRegenerate = () => {
     fetchSubreddits(true);
   };
+
+  const formatNumber = (num?: number) => {
+    if (!num) return 'N/A';
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
   
   return (
     <Card id="subreddit-recommendations" className="mt-6 border-marketing-purple/30">
       <CardHeader className="bg-marketing-purple/5 flex flex-row items-center justify-between">
         <CardTitle className="text-xl">Recommended Subreddits</CardTitle>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleRegenerate}
-          disabled={isLoading || isRegenerating}
-          className="whitespace-nowrap flex gap-2 items-center"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-          Regenerate
-        </Button>
+        <div className="flex items-center gap-4">
+          {websiteUrl && (
+            <span className="text-sm text-gray-600">
+              Website: <span className="font-medium">{websiteUrl}</span>
+            </span>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={isLoading || isRegenerating}
+            className="whitespace-nowrap flex gap-2 items-center"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+            Regenerate
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="pt-4">
         {(isLoading || isRegenerating) ? (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Skeleton className="h-8 w-full" />
+              <div key={i} className="border rounded-lg p-4">
+                <Skeleton className="h-6 w-32 mb-2" />
+                <div className="flex gap-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
               </div>
             ))}
           </div>
         ) : recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {recommendations.map((rec) => (
-              <Button 
+              <Card 
                 key={rec.id} 
-                variant="outline" 
-                className="justify-between hover:bg-marketing-purple/10 hover:text-marketing-purple hover:border-marketing-purple/30"
+                className="border hover:shadow-md transition-shadow cursor-pointer hover:bg-marketing-purple/5"
                 onClick={() => handleSubredditClick(rec.subreddit)}
               >
-                <span>r/{rec.subreddit}</span>
-                <ExternalLink className="h-4 w-4 ml-2" />
-              </Button>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-lg">r/{rec.subreddit}</h3>
+                    <ExternalLink className="h-4 w-4 text-gray-400" />
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Engagement Rate:</span>
+                      <span className="font-medium text-green-600">
+                        {rec.engagement_rate ? `${rec.engagement_rate.toFixed(1)}%` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subscribers:</span>
+                      <span className="font-medium">{formatNumber(rec.subscribers)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Posts/Day:</span>
+                      <span className="font-medium">{formatNumber(rec.posts_per_day)}</span>
+                    </div>
+                  </div>
+                  
+                  {rec.reason && (
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-gray-600 italic">{rec.reason}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : error ? (
@@ -167,7 +222,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
         
         {recommendations.length > 0 && (
           <div className="mt-4 pt-4 border-t text-sm text-gray-500">
-            <p>Click on any subreddit to open it in a new tab.</p>
+            <p>Click on any subreddit to open it in a new tab. Sorted by engagement rate (highest to lowest).</p>
             {allPreviousSubreddits.length > 0 && (
               <p className="mt-1">
                 Previously recommended: {allPreviousSubreddits.length} subreddit{allPreviousSubreddits.length !== 1 ? 's' : ''}

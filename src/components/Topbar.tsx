@@ -29,34 +29,33 @@ const Topbar = () => {
             <span className="text-white font-bold text-xl">BLASTari</span>
           </Link>
           
-          {user && (
-            <nav className="flex items-center space-x-6">
-              <Link 
-                to="/dashboard" 
-                className={`text-white hover:text-white/80 transition-colors ${
-                  location.pathname === '/dashboard' ? 'border-b-2 border-white pb-1' : ''
-                }`}
-              >
-                Home
-              </Link>
-              <Link 
-                to="/research" 
-                className={`text-white hover:text-white/80 transition-colors ${
-                  location.pathname === '/research' ? 'border-b-2 border-white pb-1' : ''
-                }`}
-              >
-                Posts
-              </Link>
-              <Link 
-                to="/chat" 
-                className={`text-white hover:text-white/80 transition-colors ${
-                  location.pathname === '/chat' ? 'border-b-2 border-white pb-1' : ''
-                }`}
-              >
-                Chat
-              </Link>
-            </nav>
-          )}
+          {/* Always show navigation - removed user check */}
+          <nav className="flex items-center space-x-6">
+            <Link 
+              to="/dashboard" 
+              className={`text-white hover:text-white/80 transition-colors ${
+                location.pathname === '/dashboard' ? 'border-b-2 border-white pb-1' : ''
+              }`}
+            >
+              Home
+            </Link>
+            <Link 
+              to="/research" 
+              className={`text-white hover:text-white/80 transition-colors ${
+                location.pathname === '/research' ? 'border-b-2 border-white pb-1' : ''
+              }`}
+            >
+              Posts
+            </Link>
+            <Link 
+              to="/chat" 
+              className={`text-white hover:text-white/80 transition-colors ${
+                location.pathname === '/chat' ? 'border-b-2 border-white pb-1' : ''
+              }`}
+            >
+              Chat
+            </Link>
+          </nav>
         </div>
         
         <div className="flex items-center gap-4">

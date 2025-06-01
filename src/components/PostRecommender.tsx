@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, MessageSquare, Users, ExternalLink, RefreshCw } from 'lucide-react';
+import { Bot, MessageSquare, Users, ExternalLink, RefreshCw, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SessionManager } from '@/utils/sessionManager';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface RedditPost {
   id: string;
@@ -27,6 +29,8 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const fetchStoredPosts = async () => {
     try {
@@ -136,6 +140,16 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
   };
 
   const handleRegenerate = async () => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign up for an account to access post generation features',
+        variant: 'destructive',
+      });
+      navigate('/auth');
+      return;
+    }
+    
     // Clear cached data
     SessionManager.removeSessionData(`post_recommendations_${websiteUrl}`);
     await generatePostRecommendations(true);
@@ -181,14 +195,44 @@ const PostRecommender: React.FC<PostRecommenderProps> = ({ websiteUrl }) => {
           <h1 className="text-3xl font-bold text-gray-900">Reddit Post Recommendations</h1>
           <p className="text-gray-600 mt-2">AI-generated posts designed to spark engagement in relevant subreddits</p>
         </div>
-        <Button
-          onClick={handleRegenerate}
-          disabled={isLoading || isRegenerating}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-          Regenerate
-        </Button>
+        <div className="flex items-center gap-4">
+          {websiteUrl && (
+            <span className="text-sm text-gray-600">
+              Website: <span className="font-medium">{websiteUrl}</span>
+            </span>
+          )}
+          {!user ? (
+            <div className="flex items-center gap-2">
+              <Button
+                disabled
+                className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+              >
+                <Lock className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
+                Regenerate
+              </Button>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Join the waitlist to access</p>
+                <Button
+                  onClick={() => navigate('/auth')}
+                  size="sm"
+                  className="bg-marketing-purple hover:bg-marketing-purple/90"
+                >
+                  Make an Account
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              onClick={handleRegenerate}
+              disabled={isLoading || isRegenerating}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+              Regenerate
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
