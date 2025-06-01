@@ -297,25 +297,3 @@ Example approach: "I had a similar issue and found [general solution type] reall
   
   return comment;
 }
-
-function checkProductRelevance(text: string, productAnalysis: any): boolean {
-  const keywords = productAnalysis.keywords || [];
-  const category = productAnalysis.category?.toLowerCase() || '';
-  const benefits = productAnalysis.mainBenefits || [];
-  
-  // Check if text contains product keywords
-  const hasKeywords = keywords.some((keyword: string) => 
-    text.includes(keyword.toLowerCase())
-  );
-  
-  // Check if text relates to product category
-  const hasCategory = category && text.includes(category);
-  
-  // Check if text mentions similar benefits/problems
-  const hasBenefitRelation = benefits.some((benefit: string) => 
-    text.includes(benefit.toLowerCase()) || 
-    text.includes(benefit.toLowerCase().replace('improved ', '').replace('better ', ''))
-  );
-  
-  return hasKeywords || hasCategory || hasBenefitRelation;
-}
