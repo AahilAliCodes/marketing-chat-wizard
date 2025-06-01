@@ -13,6 +13,7 @@ export class SessionManager {
     if (!sessionId) {
       sessionId = this.generateSessionId();
       localStorage.setItem(`${this.SESSION_KEY}_id`, sessionId);
+      this.setCookie(`${this.SESSION_KEY}_id`, sessionId, this.SESSION_EXPIRY_HOURS);
     }
     return sessionId;
   }
@@ -22,7 +23,7 @@ export class SessionManager {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Set session data with expiry
+  // Set session data with expiry (both localStorage and cookies)
   static setSessionData(key: string, data: any): void {
     const sessionData = {
       data,
@@ -30,13 +31,16 @@ export class SessionManager {
       expires: Date.now() + (this.SESSION_EXPIRY_HOURS * 60 * 60 * 1000)
     };
     
-    localStorage.setItem(`${this.SESSION_KEY}_${key}`, JSON.stringify(sessionData));
+    const serializedData = JSON.stringify(sessionData);
     
-    // Also save to cookies for cross-tab consistency
-    this.setCookie(`${this.SESSION_KEY}_${key}`, JSON.stringify(sessionData), this.SESSION_EXPIRY_HOURS);
+    // Store in localStorage
+    localStorage.setItem(`${this.SESSION_KEY}_${key}`, serializedData);
+    
+    // Also save to cookies for persistence across sessions
+    this.setCookie(`${this.SESSION_KEY}_${key}`, serializedData, this.SESSION_EXPIRY_HOURS);
   }
 
-  // Get session data (check both localStorage and cookies)
+  // Get session data (check both localStorage and cookies with fallback)
   static getSessionData(key: string): any {
     // First try localStorage
     const localData = localStorage.getItem(`${this.SESSION_KEY}_${key}`);
@@ -44,13 +48,15 @@ export class SessionManager {
       try {
         const parsed = JSON.parse(localData);
         if (this.isDataValid(parsed)) {
+          // Also update cookie to extend expiry
+          this.setCookie(`${this.SESSION_KEY}_${key}`, localData, this.SESSION_EXPIRY_HOURS);
           return parsed.data;
         } else {
           // Data expired, remove it
           this.removeSessionData(key);
         }
       } catch (error) {
-        console.error('Error parsing session data:', error);
+        console.error('Error parsing localStorage session data:', error);
         this.removeSessionData(key);
       }
     }
@@ -69,7 +75,7 @@ export class SessionManager {
           this.removeSessionData(key);
         }
       } catch (error) {
-        console.error('Error parsing cookie data:', error);
+        console.error('Error parsing cookie session data:', error);
         this.removeSessionData(key);
       }
     }
@@ -77,13 +83,13 @@ export class SessionManager {
     return null;
   }
 
-  // Remove session data
+  // Remove session data (both localStorage and cookies)
   static removeSessionData(key: string): void {
     localStorage.removeItem(`${this.SESSION_KEY}_${key}`);
     this.deleteCookie(`${this.SESSION_KEY}_${key}`);
   }
 
-  // Clear all session data
+  // Clear all session data (both localStorage and cookies)
   static clearAllSessionData(): void {
     // Clear localStorage
     const keys = Object.keys(localStorage);
@@ -129,11 +135,11 @@ export class SessionManager {
     return Date.now() < sessionData.expires;
   }
 
-  // Cookie helper methods
+  // Enhanced cookie helper methods with better persistence
   private static setCookie(name: string, value: string, hours: number): void {
     const expires = new Date();
     expires.setTime(expires.getTime() + (hours * 60 * 60 * 1000));
-    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax;Secure`;
   }
 
   private static getCookie(name: string): string | null {
@@ -150,7 +156,7 @@ export class SessionManager {
   }
 
   private static deleteCookie(name: string): void {
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax;Secure`;
   }
 
   // Get all session keys (for debugging)
@@ -180,5 +186,27 @@ export class SessionManager {
   // Clear selected subreddit
   static clearSelectedSubreddit(): void {
     this.removeSessionData('selected_subreddit');
+  }
+
+  // Enhanced methods for subreddit and posts persistence
+  static setSubredditAnalytics(websiteUrl: string, data: any): void {
+    this.setSessionData(`analytics_${websiteUrl}`, data);
+  }
+
+  static getSubredditAnalytics(websiteUrl: string): any {
+    return this.getSessionData(`analytics_${websiteUrl}`);
+  }
+
+  static setRedditPosts(websiteUrl: string, data: any): void {
+    this.setSessionData(`posts_${websiteUrl}`, data);
+  }
+
+  static getRedditPosts(websiteUrl: string): any {
+    return this.getSessionData(`posts_${websiteUrl}`);
+  }
+
+  static clearWebsiteData(websiteUrl: string): void {
+    this.removeSessionData(`analytics_${websiteUrl}`);
+    this.removeSessionData(`posts_${websiteUrl}`);
   }
 }
