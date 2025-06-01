@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ExternalLink, RefreshCw } from 'lucide-react';
+import AgenticWorkflow from './AgenticWorkflow';
 
 interface SubredditRecommendation {
   id: string;
@@ -28,6 +28,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [allPreviousSubreddits, setAllPreviousSubreddits] = useState<string[]>([]);
+  const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
   const { toast } = useToast();
 
   const fetchAllPreviousSubreddits = async () => {
@@ -54,6 +55,7 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
     
     setIsLoading(!forceRegenerate);
     if (forceRegenerate) setIsRegenerating(true);
+    setShowWorkflow(true);
     setError(null);
     
     try {
@@ -102,9 +104,14 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
-      setIsRegenerating(false);
+      // Don't hide workflow here - let it complete naturally
     }
+  };
+  
+  const handleWorkflowComplete = () => {
+    setShowWorkflow(false);
+    setIsLoading(false);
+    setIsRegenerating(false);
   };
   
   useEffect(() => {
@@ -129,109 +136,116 @@ const SubredditRecommendations: React.FC<SubredditRecommendationsProps> = ({ web
   };
   
   return (
-    <Card id="subreddit-recommendations" className="mt-6 border-marketing-purple/30">
-      <CardHeader className="bg-marketing-purple/5 flex flex-row items-center justify-between">
-        <CardTitle className="text-xl">Recommended Subreddits</CardTitle>
-        <div className="flex items-center gap-4">
-          {websiteUrl && (
-            <span className="text-sm text-gray-600">
-              Website: <span className="font-medium">{websiteUrl}</span>
-            </span>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRegenerate}
-            disabled={isLoading || isRegenerating}
-            className="whitespace-nowrap flex gap-2 items-center"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-            Regenerate
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4">
-        {(isLoading || isRegenerating) ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="border rounded-lg p-4">
-                <Skeleton className="h-6 w-32 mb-2" />
-                <div className="flex gap-4">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recommendations.map((rec) => (
-              <Card 
-                key={rec.id} 
-                className="border hover:shadow-md transition-shadow cursor-pointer hover:bg-marketing-purple/5"
-                onClick={() => handleSubredditClick(rec.subreddit)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">r/{rec.subreddit}</h3>
-                    <ExternalLink className="h-4 w-4 text-gray-400" />
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Engagement Rate:</span>
-                      <span className="font-medium text-green-600">
-                        {rec.engagement_rate ? `${rec.engagement_rate.toFixed(1)}%` : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subscribers:</span>
-                      <span className="font-medium">{formatNumber(rec.subscribers)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Posts/Day:</span>
-                      <span className="font-medium">{formatNumber(rec.posts_per_day)}</span>
-                    </div>
-                  </div>
-                  
-                  {rec.reason && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-xs text-gray-600 italic">{rec.reason}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-4 border rounded bg-red-50">
-            <p className="text-red-600">{error}</p>
+    <>
+      <AgenticWorkflow 
+        isVisible={showWorkflow} 
+        onComplete={handleWorkflowComplete}
+      />
+      
+      <Card id="subreddit-recommendations" className="mt-6 border-marketing-purple/30">
+        <CardHeader className="bg-marketing-purple/5 flex flex-row items-center justify-between">
+          <CardTitle className="text-xl">Recommended Subreddits</CardTitle>
+          <div className="flex items-center gap-4">
+            {websiteUrl && (
+              <span className="text-sm text-gray-600">
+                Website: <span className="font-medium">{websiteUrl}</span>
+              </span>
+            )}
             <Button 
               variant="outline" 
-              size="sm" 
-              className="mt-2"
+              size="sm"
               onClick={handleRegenerate}
+              disabled={isLoading || isRegenerating || showWorkflow}
+              className="whitespace-nowrap flex gap-2 items-center"
             >
-              Try again
+              <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+              Regenerate
             </Button>
           </div>
-        ) : (
-          <p className="text-gray-500">No subreddit recommendations found.</p>
-        )}
-        
-        {recommendations.length > 0 && (
-          <div className="mt-4 pt-4 border-t text-sm text-gray-500">
-            <p>Click on any subreddit to open it in a new tab. Sorted by engagement rate (highest to lowest).</p>
-            {allPreviousSubreddits.length > 0 && (
-              <p className="mt-1">
-                Previously recommended: {allPreviousSubreddits.length} subreddit{allPreviousSubreddits.length !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {(isLoading || isRegenerating) && !showWorkflow ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="border rounded-lg p-4">
+                  <Skeleton className="h-6 w-32 mb-2" />
+                  <div className="flex gap-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {recommendations.map((rec) => (
+                <Card 
+                  key={rec.id} 
+                  className="border hover:shadow-md transition-shadow cursor-pointer hover:bg-marketing-purple/5"
+                  onClick={() => handleSubredditClick(rec.subreddit)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-lg">r/{rec.subreddit}</h3>
+                      <ExternalLink className="h-4 w-4 text-gray-400" />
+                    </div>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Engagement Rate:</span>
+                        <span className="font-medium text-green-600">
+                          {rec.engagement_rate ? `${rec.engagement_rate.toFixed(1)}%` : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subscribers:</span>
+                        <span className="font-medium">{formatNumber(rec.subscribers)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Posts/Day:</span>
+                        <span className="font-medium">{formatNumber(rec.posts_per_day)}</span>
+                      </div>
+                    </div>
+                    
+                    {rec.reason && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-gray-600 italic">{rec.reason}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="p-4 border rounded bg-red-50">
+              <p className="text-red-600">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={handleRegenerate}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <p className="text-gray-500">No subreddit recommendations found.</p>
+          )}
+          
+          {recommendations.length > 0 && (
+            <div className="mt-4 pt-4 border-t text-sm text-gray-500">
+              <p>Click on any subreddit to open it in a new tab. Sorted by engagement rate (highest to lowest).</p>
+              {allPreviousSubreddits.length > 0 && (
+                <p className="mt-1">
+                  Previously recommended: {allPreviousSubreddits.length} subreddit{allPreviousSubreddits.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 };
 
