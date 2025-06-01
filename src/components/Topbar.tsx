@@ -45,7 +45,7 @@ const Topbar = () => {
                   location.pathname === '/research' ? 'border-b-2 border-white pb-1' : ''
                 }`}
               >
-                Research
+                Posts
               </Link>
               <Link 
                 to="/chat" 
@@ -83,6 +83,7 @@ const Topbar = () => {
               <LogIn className="h-4 w-4 mr-2" />
               Sign In
             </Button>
+            </>
           )}
         </div>
       </div>

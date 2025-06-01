@@ -96,8 +96,8 @@ const Chat = () => {
         : `Hello! I'm your marketing consultant for ${websiteUrl}. With your website analysis in hand, I can help you develop comprehensive marketing strategies across all channels - from social media to email marketing, SEO, and beyond. Let's grow your business! 📈`;
     } else {
       return isRedditMode
-        ? "Hi! I'm your Reddit marketing assistant. To get started, please enter a website URL above so I can provide targeted Reddit marketing strategies and subreddit recommendations. 🚀"
-        : "Hello! I'm your marketing consultant. Enter a website URL to get personalized marketing strategies across all channels - social media, email, SEO, content marketing, and more! 📈";
+        ? "Hi! I'm your Reddit marketing assistant. To get personalized advice, please analyze a website from the Home page first. 🚀"
+        : "Hello! I'm your marketing consultant. To get personalized strategies, please analyze a website from the Home page first. 📈";
     }
   };
 
@@ -156,8 +156,8 @@ User Question: ${inputMessage}`;
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: isRedditMode 
-          ? "To provide personalized Reddit marketing advice, please enter your website URL above. This helps me understand your business and create targeted strategies!"
-          : "To provide personalized marketing strategies, please enter your website URL above. This helps me analyze your business and create comprehensive marketing plans!",
+          ? "To provide personalized Reddit marketing advice, please analyze a website from the Home page first. This helps me understand your business and create targeted strategies!"
+          : "To provide personalized marketing strategies, please analyze a website from the Home page first. This helps me analyze your business and create comprehensive marketing plans!",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
@@ -182,14 +182,18 @@ User Question: ${inputMessage}`;
         "Find the best subreddits for my business",
         "Create engaging Reddit post ideas",
         "Analyze my target audience for Reddit",
-        "Write authentic Reddit comments for engagement"
+        "Write authentic Reddit comments for engagement",
+        "Generate a Reddit advertising strategy",
+        "Create Reddit-specific content that doesn't look like ads"
       ];
     } else {
       return [
         "Create a comprehensive marketing strategy",
         "Develop social media content ideas",
         "Design an email marketing campaign",
-        "Build an SEO content plan"
+        "Build an SEO content plan",
+        "Create a brand positioning strategy",
+        "Generate influencer marketing ideas"
       ];
     }
   };
@@ -237,21 +241,6 @@ User Question: ${inputMessage}`;
                 </span>
                 <MessageSquare className="h-5 w-5 text-orange-500" />
               </div>
-            </div>
-            
-            {/* Website URL Input */}
-            <div className="mb-4">
-              <label htmlFor="website-url" className="block text-sm font-medium text-gray-700 mb-2">
-                Website URL (for personalized advice)
-              </label>
-              <input
-                id="website-url"
-                type="url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-marketing-purple focus:border-transparent"
-              />
             </div>
             
             {websiteAnalysis && (
