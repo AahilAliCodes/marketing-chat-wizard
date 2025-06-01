@@ -108,28 +108,6 @@ const Home = () => {
             </button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
-          {[
-            {
-              title: "AI Analysis",
-              description: "Deep website content analysis to understand your business"
-            },
-            {
-              title: "Smart Targeting",
-              description: "Discover high-engagement subreddits for your niche"
-            },
-            {
-              title: "Auto Generation",
-              description: "Create authentic Reddit posts that drive traffic"
-            }
-          ].map((feature, index) => (
-            <div key={index} className="bg-white/60 glass rounded-xl p-6 text-center shadow-modern hover:shadow-modern-lg transition-all duration-300 hover:-translate-y-1">
-              <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
-            </div>
-          ))}
-        </div>
       </main>
     </div>
   );
