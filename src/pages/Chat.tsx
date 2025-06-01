@@ -11,6 +11,7 @@ import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, MessageSquare }
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Badge } from '@/components/ui/badge';
 import { SessionManager } from '@/utils/sessionManager';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatMessage {
   id: string;
@@ -43,14 +44,77 @@ const Chat = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Load website context from location state or session
+  // Load website context from location state, session, or database
   useEffect(() => {
-    if (location.state?.websiteUrl) {
-      setWebsiteUrl(location.state.websiteUrl);
-      if (location.state.websiteAnalysis) {
-        setWebsiteAnalysis(location.state.websiteAnalysis);
+    const loadWebsiteData = async () => {
+      let currentWebsiteUrl = '';
+      let currentAnalysis = null;
+
+      // First try location state
+      if (location.state?.websiteUrl) {
+        currentWebsiteUrl = location.state.websiteUrl;
+        if (location.state.websiteAnalysis) {
+          currentAnalysis = location.state.websiteAnalysis;
+        }
       }
-    }
+
+      // If no location state, try session storage
+      if (!currentWebsiteUrl) {
+        const sessionAnalysis = SessionManager.getSessionData('current_analysis');
+        if (sessionAnalysis?.websiteUrl) {
+          currentWebsiteUrl = sessionAnalysis.websiteUrl;
+        }
+      }
+
+      // If still no website URL, try to get the most recent analysis from database
+      if (!currentWebsiteUrl) {
+        try {
+          const { data: recentAnalysis } = await supabase
+            .from('website_analyses')
+            .select('website_url')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (recentAnalysis) {
+            currentWebsiteUrl = recentAnalysis.website_url;
+          }
+        } catch (error) {
+          console.error('Error fetching recent website:', error);
+        }
+      }
+
+      // Now load the analysis for this website URL
+      if (currentWebsiteUrl && !currentAnalysis) {
+        // Check session first
+        const sessionData = SessionManager.getSessionData(`analysis_${currentWebsiteUrl}`);
+        if (sessionData) {
+          currentAnalysis = sessionData;
+        } else {
+          // Check database
+          try {
+            const { data: dbAnalysis } = await supabase
+              .from('website_analyses')
+              .select('*')
+              .eq('website_url', currentWebsiteUrl)
+              .maybeSingle();
+
+            if (dbAnalysis) {
+              currentAnalysis = dbAnalysis;
+              // Cache in session
+              SessionManager.setSessionData(`analysis_${currentWebsiteUrl}`, dbAnalysis);
+            }
+          } catch (error) {
+            console.error('Error loading website analysis:', error);
+          }
+        }
+      }
+
+      setWebsiteUrl(currentWebsiteUrl);
+      setWebsiteAnalysis(currentAnalysis);
+    };
+
+    loadWebsiteData();
   }, [location.state]);
 
   // Load chat history from session storage
@@ -94,10 +158,14 @@ const Chat = () => {
       return isRedditMode 
         ? `Hi! I'm your Reddit marketing assistant for ${websiteUrl}. I have your website analysis and I'm ready to help you create targeted Reddit campaigns, find relevant subreddits, and craft authentic posts that will resonate with your audience. 🚀`
         : `Hello! I'm your marketing consultant for ${websiteUrl}. With your website analysis in hand, I can help you develop comprehensive marketing strategies across all channels - from social media to email marketing, SEO, and beyond. Let's grow your business! 📈`;
+    } else if (websiteUrl) {
+      return isRedditMode
+        ? `Hi! I'm your Reddit marketing assistant for ${websiteUrl}. I'm ready to help you with Reddit marketing strategies, even without detailed analysis. What would you like to know? 🚀`
+        : `Hello! I'm your marketing consultant for ${websiteUrl}. I'm ready to help you with marketing strategies. What can I assist you with today? 📈`;
     } else {
       return isRedditMode
-        ? "Hi! I'm your Reddit marketing assistant. To get personalized advice, please analyze a website from the Home page first. 🚀"
-        : "Hello! I'm your marketing consultant. To get personalized strategies, please analyze a website from the Home page first. 📈";
+        ? "Hi! I'm your Reddit marketing assistant. I'm here to help with any Reddit marketing questions you have. Feel free to ask me anything! 🚀"
+        : "Hello! I'm your marketing consultant. I'm here to help with any marketing questions you have. What can I assist you with today? 📈";
     }
   };
 
@@ -136,10 +204,10 @@ Marketing Angles: ${websiteAnalysis.marketing_angles.join(', ')}
 User Question: ${inputMessage}`;
     }
 
-    // Get AI response
-    if (websiteUrl) {
+    // Get AI response - always try to get a response, even without website context
+    try {
       const campaignType = isRedditMode ? 'reddit' : 'general_marketing';
-      const response = await sendMessageToAI(websiteUrl, enhancedMessage, campaignType);
+      const response = await sendMessageToAI(websiteUrl || 'general', enhancedMessage, campaignType);
       
       if (response) {
         const aiMessage: ChatMessage = {
@@ -150,17 +218,15 @@ User Question: ${inputMessage}`;
         };
         setMessages(prev => [...prev, aiMessage]);
       }
-    } else {
-      // Provide guidance message
-      const aiMessage: ChatMessage = {
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: isRedditMode 
-          ? "To provide personalized Reddit marketing advice, please analyze a website from the Home page first. This helps me understand your business and create targeted strategies!"
-          : "To provide personalized marketing strategies, please analyze a website from the Home page first. This helps me analyze your business and create comprehensive marketing plans!",
+        content: "I apologize, but I'm having trouble connecting to the AI service right now. Please try again in a moment.",
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
