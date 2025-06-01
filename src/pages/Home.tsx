@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, MessageCircle } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -58,22 +57,6 @@ const Home = () => {
     }
   };
 
-  const handleGoToChat = () => {
-    if (websiteUrl) {
-      const formattedUrl = websiteUrl.toLowerCase().startsWith('http') 
-        ? websiteUrl.toLowerCase() 
-        : `https://${websiteUrl.toLowerCase()}`;
-      
-      navigate('/chat', {
-        state: {
-          websiteUrl: formattedUrl
-        }
-      });
-    } else {
-      navigate('/chat');
-    }
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAnalyzeWebsite();
@@ -124,19 +107,6 @@ const Home = () => {
               <Send className="h-5 w-5" />
             </button>
           </div>
-          
-          <div className="flex items-center justify-center mt-4">
-            <span className="text-gray-400 text-sm">or</span>
-          </div>
-          
-          <Button
-            onClick={handleGoToChat}
-            variant="outline"
-            className="w-full mt-4 border-marketing-purple text-marketing-purple hover:bg-marketing-purple hover:text-white"
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Start Marketing Chat
-          </Button>
         </div>
         
         <div className="text-sm text-gray-500 max-w-2xl">
