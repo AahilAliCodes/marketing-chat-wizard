@@ -25,9 +25,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Set up auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Handle successful auth and redirect to previous page
+        if (event === 'SIGNED_IN' && session?.user) {
+          const returnUrl = sessionStorage.getItem('authReturnUrl') || '/dashboard';
+          sessionStorage.removeItem('authReturnUrl');
+          
+          // Small delay to ensure state is updated
+          setTimeout(() => {
+            window.location.href = returnUrl;
+          }, 100);
+        }
       }
     );
 
@@ -47,13 +58,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         email, 
         password,
         options: {
-          emailRedirectTo: undefined // Disable email confirmation
+          emailRedirectTo: undefined // Disable email confirmation for demo
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        // Handle specific auth errors gracefully
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email confirmation required",
+            description: "Please check your email and click the confirmation link to complete signup.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
       
-      // If user is immediately available (no email confirmation), sign them in
+      // If user is immediately available (no email confirmation), they're signed in
       if (data.user && !data.user.email_confirmed_at) {
         toast({
           title: "Account created successfully",
@@ -73,7 +95,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        // Handle specific auth errors gracefully
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email confirmation required",
+            description: "Please check your email and click the confirmation link before signing in.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
       toast({
         title: "Welcome back",
         description: "You have successfully signed in"

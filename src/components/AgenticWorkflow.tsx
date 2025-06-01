@@ -36,16 +36,19 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       return;
     }
 
-    const stepDuration = 2000;
+    const stepDuration = 1500;
     const totalSteps = generationSteps.length;
 
+    // Handle completion immediately when isComplete becomes true
     if (isComplete && !hasCompleted) {
       setCurrentStep(totalSteps - 1);
       setProgress(100);
       setHasCompleted(true);
+      
+      // Complete immediately when process is done, no artificial delay
       setTimeout(() => {
         onComplete?.();
-      }, 500);
+      }, 300);
       return;
     }
 
@@ -62,23 +65,18 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        let increment = 2;
-        if (prev >= 72 && !isComplete) {
-          increment = 0.3;
+        // If process is complete, jump to 100%
+        if (isComplete) {
+          return 100;
         }
         
-        const newProgress = Math.min(prev + increment, 100);
+        // Slow down significantly at 72% to wait for actual completion
+        let increment = prev < 72 ? 3 : 0.5;
         
-        if (newProgress >= 100 && isComplete && !hasCompleted) {
-          setHasCompleted(true);
-          setTimeout(() => {
-            onComplete?.();
-          }, 500);
-        }
-        
+        const newProgress = Math.min(prev + increment, isComplete ? 100 : 72);
         return newProgress;
       });
-    }, 100);
+    }, 80);
 
     return () => {
       clearInterval(stepInterval);
@@ -95,17 +93,17 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
           <Sparkles className="w-4 h-4 mr-2" />
           AI Agent Working
         </div>
-        <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+        <h3 className="text-2xl font-semibold text-gray-900 mb-3 font-helvetica">
           Analyzing & Generating
         </h3>
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 leading-relaxed font-helvetica">
           Our AI is analyzing your website and generating personalized Reddit marketing recommendations
         </p>
       </div>
 
       <div className="space-y-4">
         <Progress value={progress} className="h-3 bg-gray-100" />
-        <div className="text-sm text-gray-500 text-center font-medium">
+        <div className="text-sm text-gray-500 text-center font-medium font-helvetica">
           {Math.round(progress)}% Complete
         </div>
       </div>
@@ -127,7 +125,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
             }`}>
               {index < currentStep ? '✓' : index === currentStep ? '●' : '○'}
             </div>
-            <span className={`text-sm transition-all duration-500 ${
+            <span className={`text-sm transition-all duration-500 font-helvetica ${
               index <= currentStep ? 'text-gray-900 font-medium' : 'text-gray-400'
             }`}>
               {step}
@@ -149,7 +147,7 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
 
       {isComplete && hasCompleted && (
         <div className="text-center animate-fade-in">
-          <div className="inline-flex items-center text-green-600 font-semibold bg-green-50 px-4 py-2 rounded-full">
+          <div className="inline-flex items-center text-green-600 font-semibold bg-green-50 px-4 py-2 rounded-full font-helvetica">
             <Sparkles className="w-4 h-4 mr-2" />
             Generation Complete!
           </div>
