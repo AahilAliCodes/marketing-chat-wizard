@@ -3,10 +3,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AgenticWorkflow from '@/components/AgenticWorkflow';
 
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showWorkflow, setShowWorkflow] = useState(false);
+  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -35,19 +38,20 @@ const Home = () => {
 
     try {
       setIsLoading(true);
+      setShowWorkflow(true);
+      setIsAnalysisComplete(false);
       
       // Format URL with https if not provided
       const formattedUrl = lowercaseUrl.startsWith('http') ? lowercaseUrl : `https://${lowercaseUrl}`;
       
-      // Navigate to dashboard with loading state
-      navigate('/dashboard', { 
-        state: { 
-          isAnalyzing: true,
-          websiteUrl: formattedUrl 
-        }
-      });
+      // Simulate analysis time (the actual analysis will happen on the dashboard)
+      setTimeout(() => {
+        setIsAnalysisComplete(true);
+      }, 8000); // 8 seconds to show the full workflow
+      
     } catch (error) {
       setIsLoading(false);
+      setShowWorkflow(false);
       console.error('Error:', error);
       toast({
         title: 'Error',
@@ -55,6 +59,22 @@ const Home = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleWorkflowComplete = () => {
+    setShowWorkflow(false);
+    setIsLoading(false);
+    
+    // Format URL with https if not provided
+    const formattedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
+    
+    // Navigate to dashboard with loading state
+    navigate('/dashboard', { 
+      state: { 
+        isAnalyzing: true,
+        websiteUrl: formattedUrl 
+      }
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -69,51 +89,59 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
-      <header className="container mx-auto p-4 flex justify-between items-center">
-        <div className="flex items-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-marketing-purple rounded-md mr-2">
-            <span className="text-white font-bold">B.</span>
+    <>
+      <AgenticWorkflow 
+        isVisible={showWorkflow} 
+        isComplete={isAnalysisComplete}
+        onComplete={handleWorkflowComplete}
+      />
+      
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
+        <header className="container mx-auto p-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="flex items-center justify-center w-8 h-8 bg-marketing-purple rounded-md mr-2">
+              <span className="text-white font-bold">B.</span>
+            </div>
+            <span className="text-xl font-bold">BLASTari</span>
           </div>
-          <span className="text-xl font-bold">BLASTari</span>
-        </div>
-      </header>
+        </header>
 
-      <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
-        <div className="bg-marketing-purple/10 text-marketing-purple font-medium px-4 py-2 rounded-full mb-6">
-          AI-Powered Reddit Marketing
-        </div>
-        
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 max-w-5xl">
-          Autopilot <span className="text-red-600">Reddit</span> ad campaigns — zero karma needed
-        </h1>
-        
-        <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8 mb-8">
-          <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">
-            <input 
-              type="text" 
-              placeholder="Enter your business website URL" 
-              className="flex-1 p-2 outline-none text-gray-700"
-              value={websiteUrl}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              disabled={isLoading}
-            />
-            <button 
-              onClick={handleAnalyzeWebsite}
-              disabled={isLoading}
-              className="text-marketing-purple hover:text-marketing-purple/80 p-2"
-            >
-              <Send className="h-5 w-5" />
-            </button>
+        <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
+          <div className="bg-marketing-purple/10 text-marketing-purple font-medium px-4 py-2 rounded-full mb-6">
+            AI-Powered Reddit Marketing
           </div>
-        </div>
-        
-        <div className="text-sm text-gray-500 max-w-2xl">
-          Start crafting intelligent marketing campaigns that convert with our AI-powered platform. No credit card required to begin.
-        </div>
-      </main>
-    </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 max-w-5xl">
+            Autopilot <span className="text-red-600">Reddit</span> ad campaigns — zero karma needed
+          </h1>
+          
+          <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">
+              <input 
+                type="text" 
+                placeholder="Enter your business website URL" 
+                className="flex-1 p-2 outline-none text-gray-700"
+                value={websiteUrl}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+              />
+              <button 
+                onClick={handleAnalyzeWebsite}
+                disabled={isLoading}
+                className="text-marketing-purple hover:text-marketing-purple/80 p-2"
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-500 max-w-2xl">
+            Start crafting intelligent marketing campaigns that convert with our AI-powered platform. No credit card required to begin.
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 
