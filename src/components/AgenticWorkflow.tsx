@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
+import { Sparkles } from 'lucide-react';
 
 interface AgenticWorkflowProps {
   isVisible: boolean;
@@ -34,10 +36,9 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       return;
     }
 
-    const stepDuration = 2000; // 2 seconds per step
+    const stepDuration = 2000;
     const totalSteps = generationSteps.length;
 
-    // If the generation is complete, fast-forward to the end
     if (isComplete && !hasCompleted) {
       setCurrentStep(totalSteps - 1);
       setProgress(100);
@@ -48,31 +49,26 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
       return;
     }
 
-    // Progress through steps normally
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => {
         const nextStep = prev + 1;
         if (nextStep >= totalSteps) {
           clearInterval(stepInterval);
-          return totalSteps - 1; // Stay at last step
+          return totalSteps - 1;
         }
         return nextStep;
       });
     }, stepDuration);
 
-    // Smooth progress animation that continues to 100% regardless of backend status
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        // Always progress towards 100%, but slow down after 72%
         let increment = 2;
         if (prev >= 72 && !isComplete) {
-          // Slow down significantly after 72% but keep moving
           increment = 0.3;
         }
         
         const newProgress = Math.min(prev + increment, 100);
         
-        // If we reach 100% and generation is complete, trigger completion
         if (newProgress >= 100 && isComplete && !hasCompleted) {
           setHasCompleted(true);
           setTimeout(() => {
@@ -93,39 +89,41 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
   if (!isVisible) return null;
 
   const WorkflowContent = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+        <div className="inline-flex items-center bg-gradient-to-r from-marketing-purple/10 to-purple-100 text-marketing-darkPurple font-medium px-4 py-2 rounded-full mb-4">
+          <Sparkles className="w-4 h-4 mr-2" />
           AI Agent Working
+        </div>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+          Analyzing & Generating
         </h3>
-        <p className="text-gray-600 text-sm">
-          Analyzing your website and generating recommendations...
+        <p className="text-gray-600 leading-relaxed">
+          Our AI is analyzing your website and generating personalized Reddit marketing recommendations
         </p>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <Progress value={progress} className="h-2" />
-        <div className="text-xs text-gray-500 text-center">
+      <div className="space-y-4">
+        <Progress value={progress} className="h-3 bg-gray-100" />
+        <div className="text-sm text-gray-500 text-center font-medium">
           {Math.round(progress)}% Complete
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {generationSteps.map((step, index) => (
           <div 
             key={index}
-            className={`flex items-center space-x-3 transition-all duration-500 ${
-              index <= currentStep ? 'opacity-100' : 'opacity-30'
+            className={`flex items-center space-x-4 transition-all duration-500 ${
+              index <= currentStep ? 'opacity-100' : 'opacity-40'
             }`}
           >
-            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs transition-all duration-500 ${
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-500 shadow-modern ${
               index < currentStep 
-                ? 'bg-green-500 text-white' 
+                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-200' 
                 : index === currentStep 
-                ? 'bg-marketing-purple text-white animate-pulse' 
-                : 'bg-gray-200'
+                ? 'bg-gradient-to-r from-marketing-purple to-marketing-darkPurple text-white animate-pulse shadow-purple-200' 
+                : 'bg-gray-200 text-gray-400'
             }`}>
               {index < currentStep ? '✓' : index === currentStep ? '●' : '○'}
             </div>
@@ -136,9 +134,13 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
             </span>
             {index === currentStep && !isComplete && (
               <div className="flex space-x-1">
-                <div className="w-1 h-1 bg-marketing-purple rounded-full animate-bounce"></div>
-                <div className="w-1 h-1 bg-marketing-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-1 h-1 bg-marketing-purple rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                {[0, 1, 2].map((dot) => (
+                  <div 
+                    key={dot}
+                    className="w-1.5 h-1.5 bg-marketing-purple rounded-full animate-bounce" 
+                    style={{ animationDelay: `${dot * 0.1}s` }}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -147,8 +149,9 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
 
       {isComplete && hasCompleted && (
         <div className="text-center animate-fade-in">
-          <div className="text-green-600 font-semibold">
-            ✨ Generation Complete!
+          <div className="inline-flex items-center text-green-600 font-semibold bg-green-50 px-4 py-2 rounded-full">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Generation Complete!
           </div>
         </div>
       )}
@@ -157,19 +160,17 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
 
   if (embedded) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-        {/* Rocket Animation for embedded mode */}
-        <div className="flex justify-center mb-6">
+      <div className="bg-white rounded-2xl shadow-modern-lg p-10 border border-gray-100">
+        <div className="flex justify-center mb-8">
           <div className="relative">
             <div className="animate-bounce">
-              <div className="w-12 h-12 bg-gradient-to-r from-marketing-purple to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl">🚀</span>
+              <div className="w-14 h-14 bg-gradient-to-r from-marketing-purple to-marketing-darkPurple rounded-2xl flex items-center justify-center shadow-modern-lg">
+                <span className="text-white text-3xl">🚀</span>
               </div>
             </div>
-            {/* Fuel animation */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-              <div className="w-1 bg-gradient-to-b from-orange-400 to-red-500 animate-pulse" 
-                   style={{ height: `${progress / 5}px` }}></div>
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+              <div className="w-1.5 bg-gradient-to-b from-orange-400 to-red-500 animate-pulse rounded-full" 
+                   style={{ height: `${progress / 4}px` }}></div>
             </div>
           </div>
         </div>
@@ -179,22 +180,19 @@ const AgenticWorkflow: React.FC<AgenticWorkflowProps> = ({
     );
   }
 
-  // Original overlay mode
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 relative overflow-hidden">
-        {/* Rocket Animation */}
-        <div className="absolute right-4 top-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-modern-xl p-10 max-w-lg w-full relative overflow-hidden border border-gray-100">
+        <div className="absolute right-6 top-6">
           <div className="relative">
             <div className="animate-bounce">
-              <div className="w-12 h-12 bg-gradient-to-r from-marketing-purple to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl">🚀</span>
+              <div className="w-14 h-14 bg-gradient-to-r from-marketing-purple to-marketing-darkPurple rounded-2xl flex items-center justify-center shadow-modern-lg">
+                <span className="text-white text-3xl">🚀</span>
               </div>
             </div>
-            {/* Fuel animation */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-              <div className="w-1 bg-gradient-to-b from-orange-400 to-red-500 animate-pulse" 
-                   style={{ height: `${progress / 5}px` }}></div>
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+              <div className="w-1.5 bg-gradient-to-b from-orange-400 to-red-500 animate-pulse rounded-full" 
+                   style={{ height: `${progress / 4}px` }}></div>
             </div>
           </div>
         </div>

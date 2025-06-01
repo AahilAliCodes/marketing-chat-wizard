@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send } from 'lucide-react';
+import { Send, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Home = () => {
@@ -20,10 +20,8 @@ const Home = () => {
       return;
     }
 
-    // Convert to lowercase to avoid case sensitivity issues
     const lowercaseUrl = websiteUrl.toLowerCase();
 
-    // Simple URL validation
     if (!/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(lowercaseUrl)) {
       toast({
         title: 'Invalid URL',
@@ -36,10 +34,8 @@ const Home = () => {
     try {
       setIsLoading(true);
       
-      // Format URL with https if not provided
       const formattedUrl = lowercaseUrl.startsWith('http') ? lowercaseUrl : `https://${lowercaseUrl}`;
       
-      // Navigate to dashboard with loading state
       navigate('/dashboard', { 
         state: { 
           isAnalyzing: true,
@@ -64,36 +60,40 @@ const Home = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Convert to lowercase as user types
     setWebsiteUrl(e.target.value.toLowerCase());
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
-      <header className="container mx-auto p-4 flex justify-between items-center">
-        <div className="flex items-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-marketing-purple rounded-md mr-2">
-            <span className="text-white font-bold">B.</span>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-white via-gray-50 to-purple-50">
+      <header className="container mx-auto p-6 flex justify-between items-center">
+        <div className="flex items-center group">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-marketing-purple to-marketing-darkPurple rounded-xl mr-3 shadow-modern group-hover:scale-105 transition-transform duration-200">
+            <span className="text-white font-bold text-lg">B</span>
           </div>
-          <span className="text-xl font-bold">BLASTari</span>
+          <span className="text-2xl font-semibold text-gray-900 tracking-tight">BLASTari</span>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-16 md:py-24 flex flex-col items-center text-center">
-        <div className="bg-marketing-purple/10 text-marketing-purple font-medium px-4 py-2 rounded-full mb-6">
+      <main className="flex-1 container mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center">
+        <div className="inline-flex items-center bg-gradient-to-r from-marketing-purple/10 to-purple-100 text-marketing-darkPurple font-medium px-4 py-2 rounded-full mb-8 shadow-modern">
+          <Sparkles className="w-4 h-4 mr-2" />
           AI-Powered Reddit Marketing
         </div>
         
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 max-w-5xl">
-          Autopilot <span className="text-red-600">Reddit</span> ad campaigns — zero karma needed
+        <h1 className="text-5xl md:text-7xl font-bold mb-8 max-w-6xl leading-tight">
+          Autopilot <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-600">Reddit</span> ad campaigns — zero karma needed
         </h1>
         
-        <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8 mb-8">
-          <div className="bg-white border border-gray-200 rounded-lg flex items-center p-2 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple">
+        <p className="text-xl text-gray-600 mb-12 max-w-2xl leading-relaxed">
+          Start crafting intelligent marketing campaigns that convert with our AI-powered platform. No credit card required to begin.
+        </p>
+        
+        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-modern-xl border border-gray-100 p-8 mb-8">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl flex items-center p-4 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple transition-all duration-200 hover:shadow-modern">
             <input 
               type="text" 
               placeholder="Enter your business website URL" 
-              className="flex-1 p-2 outline-none text-gray-700"
+              className="flex-1 p-3 outline-none text-gray-700 bg-transparent text-lg placeholder:text-gray-400"
               value={websiteUrl}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
@@ -102,15 +102,33 @@ const Home = () => {
             <button 
               onClick={handleAnalyzeWebsite}
               disabled={isLoading}
-              className="text-marketing-purple hover:text-marketing-purple/80 p-2"
+              className="text-marketing-purple hover:text-marketing-darkPurple p-3 hover:bg-marketing-purple/10 rounded-lg transition-all duration-200 btn-modern"
             >
-              <Send className="h-5 w-5" />
+              <Send className="h-6 w-6" />
             </button>
           </div>
         </div>
         
-        <div className="text-sm text-gray-500 max-w-2xl">
-          Start crafting intelligent marketing campaigns that convert with our AI-powered platform. No credit card required to begin.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
+          {[
+            {
+              title: "AI Analysis",
+              description: "Deep website content analysis to understand your business"
+            },
+            {
+              title: "Smart Targeting",
+              description: "Discover high-engagement subreddits for your niche"
+            },
+            {
+              title: "Auto Generation",
+              description: "Create authentic Reddit posts that drive traffic"
+            }
+          ].map((feature, index) => (
+            <div key={index} className="bg-white/60 glass rounded-xl p-6 text-center shadow-modern hover:shadow-modern-lg transition-all duration-300 hover:-translate-y-1">
+              <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
+            </div>
+          ))}
         </div>
       </main>
     </div>
