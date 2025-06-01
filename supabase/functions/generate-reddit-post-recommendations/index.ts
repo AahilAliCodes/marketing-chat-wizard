@@ -35,21 +35,24 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get website analysis data
-    const { data: websiteAnalysis, error: analysisError } = await supabase
+    // Get website analysis data - take the most recent one if multiple exist
+    const { data: websiteAnalyses, error: analysisError } = await supabase
       .from('website_analyses')
       .select('*')
       .eq('website_url', websiteUrl)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
     if (analysisError) {
       console.error('Error fetching website analysis:', analysisError);
       throw new Error('Failed to fetch website analysis');
     }
 
-    if (!websiteAnalysis) {
+    if (!websiteAnalyses || websiteAnalyses.length === 0) {
       throw new Error('No website analysis found. Please analyze the website first.');
     }
+
+    const websiteAnalysis = websiteAnalyses[0];
 
     // Get subreddit recommendations for context
     const { data: subredditRecs, error: recsError } = await supabase
