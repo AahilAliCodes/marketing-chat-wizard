@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -47,7 +47,7 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Save to Supabase
+      // Save to Supabase waitlist_submissions table
       const { error } = await supabase
         .from('waitlist_submissions')
         .insert({
