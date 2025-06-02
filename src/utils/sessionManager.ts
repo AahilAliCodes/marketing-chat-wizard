@@ -5,17 +5,26 @@ interface SessionData {
 export class SessionManager {
   private static SESSION_KEY = 'blastari_session';
   private static SESSION_EXPIRY_HOURS = 24;
-  private static MAX_COOKIE_SIZE = 1500; // Reduced from 3000 to be more conservative
-  private static MAX_TOTAL_COOKIES = 10; // Limit total number of cookies
+  private static MAX_COOKIE_SIZE = 800; // Much smaller to avoid header issues
+  private static MAX_TOTAL_COOKIES = 5; // Drastically reduced
+  private static initialized = false;
+
+  // Initialize and perform emergency cleanup
+  private static initialize(): void {
+    if (!this.initialized) {
+      this.emergencyCleanup();
+      this.initialized = true;
+    }
+  }
 
   // Generate a session ID if one doesn't exist
   static getSessionId(): string {
+    this.initialize();
     let sessionId = localStorage.getItem(`${this.SESSION_KEY}_id`);
     if (!sessionId) {
       sessionId = this.generateSessionId();
       localStorage.setItem(`${this.SESSION_KEY}_id`, sessionId);
-      // Only store session ID in cookies, not large data
-      this.setCookie(`${this.SESSION_KEY}_id`, sessionId, this.SESSION_EXPIRY_HOURS);
+      // Don't store in cookies at all to avoid header bloat
     }
     return sessionId;
   }
@@ -25,8 +34,9 @@ export class SessionManager {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Set session data with expiry (prioritize localStorage over cookies)
+  // Set session data (localStorage only, no cookies)
   static setSessionData(key: string, data: any): void {
+    this.initialize();
     const sessionData = {
       data,
       timestamp: Date.now(),
@@ -35,21 +45,13 @@ export class SessionManager {
     
     const serializedData = JSON.stringify(sessionData);
     
-    // Always store in localStorage
+    // Only use localStorage to avoid header bloat
     localStorage.setItem(`${this.SESSION_KEY}_${key}`, serializedData);
-    
-    // Only store critical data in cookies and only if it's small enough
-    const isCriticalData = key.includes('session_id') || key.includes('user_id');
-    const isSmallEnough = serializedData.length < this.MAX_COOKIE_SIZE;
-    
-    if (isCriticalData && isSmallEnough) {
-      this.setCookie(`${this.SESSION_KEY}_${key}`, serializedData, this.SESSION_EXPIRY_HOURS);
-    }
   }
 
-  // Get session data (prioritize localStorage)
+  // Get session data (localStorage only)
   static getSessionData(key: string): any {
-    // First try localStorage (faster access and no size limits)
+    this.initialize();
     const localData = localStorage.getItem(`${this.SESSION_KEY}_${key}`);
     if (localData) {
       try {
@@ -65,36 +67,12 @@ export class SessionManager {
         this.removeSessionData(key);
       }
     }
-
-    // Only fallback to cookies for critical data
-    const isCriticalData = key.includes('session_id') || key.includes('user_id');
-    if (isCriticalData) {
-      const cookieData = this.getCookie(`${this.SESSION_KEY}_${key}`);
-      if (cookieData) {
-        try {
-          const parsed = JSON.parse(cookieData);
-          if (this.isDataValid(parsed)) {
-            // Restore to localStorage for faster future access
-            localStorage.setItem(`${this.SESSION_KEY}_${key}`, cookieData);
-            return parsed.data;
-          } else {
-            // Data expired, remove it
-            this.removeSessionData(key);
-          }
-        } catch (error) {
-          console.error('Error parsing cookie session data:', error);
-          this.removeSessionData(key);
-        }
-      }
-    }
-
     return null;
   }
 
-  // Remove session data from both localStorage and cookies
+  // Remove session data (localStorage only)
   static removeSessionData(key: string): void {
     localStorage.removeItem(`${this.SESSION_KEY}_${key}`);
-    this.deleteCookie(`${this.SESSION_KEY}_${key}`);
   }
 
   // Clear all session data
@@ -107,19 +85,17 @@ export class SessionManager {
       }
     });
 
-    // Clear all session cookies
-    this.clearAllSessionCookies();
+    // Clear all cookies to reduce headers
+    this.clearAllCookies();
   }
 
-  // Clear all session cookies efficiently
-  private static clearAllSessionCookies(): void {
+  // Clear ALL cookies to minimize headers
+  private static clearAllCookies(): void {
     const cookies = document.cookie.split(';');
     cookies.forEach(cookie => {
       const [name] = cookie.split('=');
       const trimmedName = name.trim();
-      if (trimmedName.startsWith(this.SESSION_KEY)) {
-        this.deleteCookie(trimmedName);
-      }
+      this.deleteCookie(trimmedName);
     });
   }
 
@@ -129,10 +105,6 @@ export class SessionManager {
     keys.forEach(key => {
       if (key.startsWith(`${this.SESSION_KEY}_chat_`) && !key.includes(currentWebsiteUrl)) {
         localStorage.removeItem(key);
-        // Only clear cookies for critical data
-        if (key.includes('session_id') || key.includes('user_id')) {
-          this.deleteCookie(key);
-        }
       }
     });
   }
@@ -143,47 +115,20 @@ export class SessionManager {
     return Date.now() < sessionData.expires;
   }
 
-  // Simplified cookie helper methods
-  private static setCookie(name: string, value: string, hours: number): void {
-    try {
-      const expires = new Date();
-      expires.setTime(expires.getTime() + (hours * 60 * 60 * 1000));
-      
-      // Encode the value
-      const encodedValue = encodeURIComponent(value);
-      
-      // Don't chunk cookies anymore to reduce header size
-      if (encodedValue.length <= this.MAX_COOKIE_SIZE) {
-        document.cookie = `${name}=${encodedValue};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-      } else {
-        console.warn(`Cookie ${name} too large (${encodedValue.length} chars), storing in localStorage only`);
-      }
-    } catch (error) {
-      console.error('Error setting cookie:', error);
-    }
-  }
-
-  private static getCookie(name: string): string | null {
-    try {
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(';');
-      for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) {
-          return decodeURIComponent(c.substring(nameEQ.length, c.length));
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting cookie:', error);
-      return null;
-    }
-  }
-
+  // Remove cookie helper (aggressive deletion)
   private static deleteCookie(name: string): void {
     try {
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
+      // Try multiple domain and path combinations
+      const domains = [window.location.hostname, `.${window.location.hostname}`, ''];
+      const paths = ['/', ''];
+      
+      domains.forEach(domain => {
+        paths.forEach(path => {
+          const domainStr = domain ? `;domain=${domain}` : '';
+          const pathStr = path ? `;path=${path}` : '';
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC${domainStr}${pathStr}`;
+        });
+      });
     } catch (error) {
       console.error('Error deleting cookie:', error);
     }
@@ -244,22 +189,13 @@ export class SessionManager {
   static emergencyCleanup(): void {
     console.log('Performing emergency session cleanup to reduce header size...');
     
-    // Clear all non-critical cookies
-    const cookies = document.cookie.split(';');
-    cookies.forEach(cookie => {
-      const [name] = cookie.split('=');
-      const trimmedName = name.trim();
-      if (trimmedName.startsWith(this.SESSION_KEY) && 
-          !trimmedName.includes('session_id') && 
-          !trimmedName.includes('user_id')) {
-        this.deleteCookie(trimmedName);
-      }
-    });
+    // Clear ALL cookies aggressively
+    this.clearAllCookies();
     
-    // Keep only recent localStorage data
+    // Keep only very recent localStorage data (last 30 minutes)
     const keys = Object.keys(localStorage);
     const now = Date.now();
-    const oneHourAgo = now - (60 * 60 * 1000);
+    const thirtyMinutesAgo = now - (30 * 60 * 1000);
     
     keys.forEach(key => {
       if (key.startsWith(this.SESSION_KEY)) {
@@ -267,7 +203,7 @@ export class SessionManager {
           const data = localStorage.getItem(key);
           if (data) {
             const parsed = JSON.parse(data);
-            if (parsed.timestamp && parsed.timestamp < oneHourAgo) {
+            if (parsed.timestamp && parsed.timestamp < thirtyMinutesAgo) {
               localStorage.removeItem(key);
             }
           }
@@ -277,5 +213,15 @@ export class SessionManager {
         }
       }
     });
+
+    // Clear any other potential cookie sources
+    try {
+      // Clear any remaining cookies that might be causing issues
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+    } catch (error) {
+      console.error('Error during aggressive cookie cleanup:', error);
+    }
   }
 }
