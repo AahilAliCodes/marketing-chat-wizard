@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react';
 interface RecommendedPrompt {
   text: string;
   description: string;
+  isSpecial?: boolean;
 }
 
 interface RecommendedPromptsProps {
@@ -15,32 +16,32 @@ interface RecommendedPromptsProps {
 
 const recommendedPrompts: Record<string, RecommendedPrompt[]> = {
   'Community Building on Discord': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
     { text: "Create a welcome message for my Discord server", description: "Server onboarding" },
     { text: "Generate a list of engagement activities for my Discord community", description: "Community activities" },
     { text: "Write a server rules template for my Discord", description: "Server rules" },
-    { text: "Create a weekly event schedule for my Discord server", description: "Event planning" },
-    { text: "Generate a list of icebreaker questions for my Discord community", description: "Community bonding" }
+    { text: "Create a weekly event schedule for my Discord server", description: "Event planning" }
   ],
   'Create Viral Content on TikTok': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
     { text: "Create a viral TikTok script about {website}", description: "Viral content" },
     { text: "Generate 5 trending TikTok video ideas for {website}", description: "Content ideas" },
     { text: "Write a hook script for a TikTok about {website}", description: "Engagement hooks" },
-    { text: "Create a TikTok transition sequence for {website}", description: "Visual effects" },
-    { text: "Generate a week's worth of TikTok content for {website}", description: "Content calendar" }
+    { text: "Create a TikTok transition sequence for {website}", description: "Visual effects" }
   ],
   'Content Marketing': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
     { text: "Write a blog post outline about {website}", description: "Content structure" },
     { text: "Create a social media content calendar for {website}", description: "Content planning" },
     { text: "Generate 10 blog post ideas for {website}", description: "Content ideas" },
-    { text: "Write an email newsletter template for {website}", description: "Email marketing" },
-    { text: "Create a content repurposing strategy for {website}", description: "Content reuse" }
+    { text: "Write an email newsletter template for {website}", description: "Email marketing" }
   ],
   'default': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
     { text: "Create a marketing plan for {website}", description: "Strategy planning" },
     { text: "Generate a social media strategy for {website}", description: "Social strategy" },
     { text: "Write a brand voice guide for {website}", description: "Brand guidelines" },
-    { text: "Create a content marketing strategy for {website}", description: "Content strategy" },
-    { text: "Generate a list of marketing channels for {website}", description: "Channel strategy" }
+    { text: "Create a content marketing strategy for {website}", description: "Content strategy" }
   ]
 };
 
@@ -66,9 +67,17 @@ const RecommendedPrompts: React.FC<RecommendedPromptsProps> = ({
           <button
             key={index}
             onClick={() => onSelectPrompt(formatPrompt(prompt.text))}
-            className="flex-shrink-0 text-left p-2 rounded-md border border-gray-200 hover:border-marketing-purple/50 hover:bg-marketing-purple/5 transition-colors"
+            className={`flex-shrink-0 text-left p-2 rounded-md border transition-colors ${
+              prompt.isSpecial 
+                ? 'bg-green-500 border-green-600 text-white hover:bg-green-600' 
+                : 'border-gray-200 hover:border-marketing-purple/50 hover:bg-marketing-purple/5'
+            }`}
           >
-            <p className="text-xs font-medium text-gray-900 line-clamp-1">{formatPrompt(prompt.text)}</p>
+            <p className={`text-xs font-medium line-clamp-1 ${
+              prompt.isSpecial ? 'text-white' : 'text-gray-900'
+            }`}>
+              {formatPrompt(prompt.text)}
+            </p>
           </button>
         ))}
       </div>
