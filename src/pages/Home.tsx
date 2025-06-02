@@ -81,7 +81,7 @@ const Home = () => {
         </div>
         
         <h1 className="text-5xl md:text-7xl font-bold mb-8 max-w-6xl leading-tight">
-          Autopilot <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-600">Reddit</span> Posts Campaigns
+          Autopilot <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-600">Reddit</span> Posts
         </h1>
         
         <p className="text-xl text-gray-600 mb-12 max-w-2xl leading-relaxed">
