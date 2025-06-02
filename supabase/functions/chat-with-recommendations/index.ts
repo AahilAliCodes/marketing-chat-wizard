@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -102,23 +101,55 @@ serve(async (req) => {
     let maxTokens = 400;
 
     if (isMarketingPlanRequest) {
-      // Special handling for marketing plan requests
-      systemPrompt = `You are a Reddit marketing strategist creating a comprehensive 7-day marketing plan for ${websiteUrl}.
-      
-      Create a detailed 7-day Reddit marketing plan that includes:
-      
-      1. **Overview & Strategy** - Brief analysis of the website and target audience
-      2. **Targeted Subreddits** - List 5-7 specific subreddits with subscriber counts and relevance
-      3. **7-Day Content Calendar** - One post per day with:
-         - Day X: Post title
-         - Target subreddit
-         - Post type (discussion, showcase, educational, etc.)
-         - Key talking points
-         - Optimal posting time
-      
-      Format as a structured plan with clear sections and actionable daily tasks. Be specific and practical.`;
-      
-      maxTokens = 1500; // Increase token limit for comprehensive plan
+      // Special handling for marketing plan requests - different for Reddit vs General
+      if (campaignType === 'reddit') {
+        systemPrompt = `You are a Reddit marketing strategist creating a comprehensive 7-day Reddit marketing plan for ${websiteUrl}.
+        
+        Create a detailed 7-day Reddit marketing plan that includes:
+        
+        1. **Overview & Strategy** - Brief analysis of the website and target audience
+        2. **Targeted Subreddits** - List 5-7 specific subreddits with subscriber counts and relevance
+        3. **7-Day Content Calendar** - One post per day with:
+           - Day X: Post title
+           - Target subreddit
+           - Post type (discussion, showcase, educational, etc.)
+           - Key talking points
+           - Optimal posting time
+        
+        Format as a structured plan with clear sections and actionable daily tasks. Be specific and practical.`;
+        
+        maxTokens = 1500; // Increase token limit for comprehensive plan
+      } else {
+        // General marketing plan using Traction methodologies
+        systemPrompt = `You are a marketing strategist creating a comprehensive marketing plan for ${websiteUrl} using the Traction methodology by Gabriel Weinberg.
+        
+        Create a strategic marketing plan that includes:
+        
+        1. **Business Overview** - Brief analysis of the website, product/service, and target market
+        
+        2. **Traction Channel Analysis** - Evaluate and prioritize the most relevant channels from the 19 Traction channels:
+           - Viral Marketing, Public Relations, Unconventional PR
+           - Search Engine Marketing, Social & Display Ads, Offline Ads
+           - Search Engine Optimization, Content Marketing, Email Marketing
+           - Engineering as Marketing, Targeting Blogs, Business Development
+           - Sales, Affiliate Programs, Existing Platforms
+           - Trade Shows, Offline Events, Speaking Engagements, Community Building
+        
+        3. **The Bullseye Framework Implementation**:
+           - **Outer Ring**: List 6-8 potential traction channels worth exploring
+           - **Middle Ring**: Identify 2-3 most promising channels for testing
+           - **Inner Ring**: Select 1 primary channel to focus on initially
+        
+        4. **Testing Strategy** - Specific experiments to run for the top 3 channels
+        
+        5. **Metrics & Goals** - Key performance indicators for each channel
+        
+        6. **Implementation Timeline** - 90-day roadmap with milestones
+        
+        Format as a strategic document with clear sections, actionable steps, and specific recommendations tailored to the business.`;
+        
+        maxTokens = 2000; // Increase token limit for comprehensive strategy
+      }
     } else {
       // Regular conversational prompt
       systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
