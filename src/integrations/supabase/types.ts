@@ -490,30 +490,6 @@ export type Database = {
         }
         Relationships: []
       }
-      waitlist_submissions: {
-        Row: {
-          comments: string | null
-          created_at: string
-          email: string
-          id: string
-          join_waitlist: boolean
-        }
-        Insert: {
-          comments?: string | null
-          created_at?: string
-          email: string
-          id?: string
-          join_waitlist?: boolean
-        }
-        Update: {
-          comments?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          join_waitlist?: boolean
-        }
-        Relationships: []
-      }
       website_analyses: {
         Row: {
           constraints: string[]
