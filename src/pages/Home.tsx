@@ -85,7 +85,7 @@ const Home = () => {
         </h1>
         
         <p className="text-xl text-gray-600 mb-12 max-w-2xl leading-relaxed">
-          Start crafting intelligent Reddit posts that convert with our AI-powered platform. No credit card required to begin.
+          Turn Reddit threads into growth channels with AI-crafted posts. Start for free — no credit card required.
         </p>
         
         <div className="w-full max-w-4xl bg-white rounded-2xl shadow-modern-xl border border-gray-100 p-8 mb-8">
