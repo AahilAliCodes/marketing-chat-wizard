@@ -33,9 +33,9 @@ const Topbar = () => {
           
           <nav className="flex items-center space-x-1">
             {[
-              { path: '/dashboard', label: 'Home' },
               { path: '/research', label: 'Posts' },
-              { path: '/chat', label: 'Chat' }
+              { path: '/dashboard', label: 'Research' },
+              { path: '/chat', label: 'Marketing Plan Chat' }
             ].map(({ path, label }) => (
               <Link 
                 key={path}

@@ -36,7 +36,8 @@ const Home = () => {
       
       const formattedUrl = lowercaseUrl.startsWith('http') ? lowercaseUrl : `https://${lowercaseUrl}`;
       
-      navigate('/dashboard', { 
+      // Navigate to research page instead of dashboard
+      navigate('/research', { 
         state: { 
           isAnalyzing: true,
           websiteUrl: formattedUrl 
@@ -81,7 +82,7 @@ const Home = () => {
         </div>
         
         <h1 className="text-5xl md:text-7xl font-bold mb-8 max-w-6xl leading-tight">
-          Autopilot <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-600">Reddit</span> ad campaigns — zero karma needed
+          Autopilot <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-600">Reddit</span> Post campaigns
         </h1>
         
         <p className="text-xl text-gray-600 mb-12 max-w-2xl leading-relaxed">

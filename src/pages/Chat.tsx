@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -7,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, MessageSquare } from 'lucide-react';
+import { Send, MessageCircle, Sparkles, ToggleLeft, ToggleRight, MessageSquare, Loader2 } from 'lucide-react';
 import { useChatWithAI } from '@/hooks/useChatWithAI';
 import { Badge } from '@/components/ui/badge';
 import { SessionManager } from '@/utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessage {
   id: string;
@@ -38,6 +38,7 @@ const Chat = () => {
   const [websiteAnalysis, setWebsiteAnalysis] = useState<WebsiteAnalysis | null>(null);
   const { sendMessageToAI, isLoading } = useChatWithAI();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Load website context from location state, session, or database
   useEffect(() => {
@@ -250,6 +251,11 @@ User Question: ${inputMessage}`;
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      toast({
+        title: "Error",
+        description: "I apologize, but I'm having trouble connecting to the AI service right now. Please try again in a moment.",
+        variant: "destructive"
+      });
     }
   };
 
