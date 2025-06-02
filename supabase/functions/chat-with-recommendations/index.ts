@@ -44,6 +44,9 @@ serve(async (req) => {
 
     console.log(`Getting recommendations for ${websiteUrl} and campaign type ${campaignType || 'all'}`);
 
+    // Check if this is the special "Make me a marketing plan" prompt
+    const isMarketingPlanRequest = userMessage.toLowerCase().includes("make me a marketing plan");
+
     // Fetch recommendations from the database
     let query = supabase
       .from('campaign_recommendations')
@@ -95,22 +98,45 @@ serve(async (req) => {
       subreddits: subredditRecommendations || []
     };
 
-    // Create a more conversational system prompt
-    let systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
+    let systemPrompt;
+    let maxTokens = 400;
+
+    if (isMarketingPlanRequest) {
+      // Special handling for marketing plan requests
+      systemPrompt = `You are a Reddit marketing strategist creating a comprehensive 7-day marketing plan for ${websiteUrl}.
       
-      Provide natural, conversational responses that directly answer the user's questions. 
+      Create a detailed 7-day Reddit marketing plan that includes:
       
-      Guidelines:
-      - Answer questions directly without always formatting as numbered lists
-      - Use step-by-step formats only when the user specifically asks for steps or a process
-      - Be conversational and personable in your tone
-      - Keep responses concise but informative (3-5 sentences unless more detail is needed)
-      - Provide specific, actionable advice tailored to their website
-      - Use bullet points sparingly and only when listing multiple related items
-      - Focus on being helpful rather than overly structured
+      1. **Overview & Strategy** - Brief analysis of the website and target audience
+      2. **Targeted Subreddits** - List 5-7 specific subreddits with subscriber counts and relevance
+      3. **7-Day Content Calendar** - One post per day with:
+         - Day X: Post title
+         - Target subreddit
+         - Post type (discussion, showcase, educational, etc.)
+         - Key talking points
+         - Optimal posting time
       
-      When appropriate, mention relevant campaign data, but don't just recite statistics. 
-      Explain the practical implications and how to act on the information.`;
+      Format as a structured plan with clear sections and actionable daily tasks. Be specific and practical.`;
+      
+      maxTokens = 1500; // Increase token limit for comprehensive plan
+    } else {
+      // Regular conversational prompt
+      systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
+        
+        Provide natural, conversational responses that directly answer the user's questions. 
+        
+        Guidelines:
+        - Answer questions directly without always formatting as numbered lists
+        - Use step-by-step formats only when the user specifically asks for steps or a process
+        - Be conversational and personable in your tone
+        - Keep responses concise but informative (3-5 sentences unless more detail is needed)
+        - Provide specific, actionable advice tailored to their website
+        - Use bullet points sparingly and only when listing multiple related items
+        - Focus on being helpful rather than overly structured
+        
+        When appropriate, mention relevant campaign data, but don't just recite statistics. 
+        Explain the practical implications and how to act on the information.`;
+    }
 
     // Call OpenAI API with the recommendations and user message
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -132,7 +158,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 400
+        max_tokens: maxTokens
       }),
     });
 
