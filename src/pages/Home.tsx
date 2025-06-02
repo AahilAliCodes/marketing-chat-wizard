@@ -77,7 +77,7 @@ const Home = () => {
       <main className="flex-1 container mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center">
         <div className="inline-flex items-center bg-gradient-to-r from-marketing-purple/10 to-purple-100 text-marketing-darkPurple font-medium px-4 py-2 rounded-full mb-8 shadow-modern">
           <Sparkles className="w-4 h-4 mr-2" />
-          AI-Powered Reddit Marketing
+          AI-Powered Reddit Posts
         </div>
         
         <h1 className="text-5xl md:text-7xl font-bold mb-8 max-w-6xl leading-tight">
