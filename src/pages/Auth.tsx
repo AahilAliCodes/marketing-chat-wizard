@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,9 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -30,6 +31,8 @@ const Auth = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,10 +47,19 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Here you would typically send the data to your backend
-      // For now, we'll just show a success message
-      console.log('Waitlist submission:', values);
-      
+      // Save to Supabase
+      const { error } = await supabase
+        .from('waitlist_submissions')
+        .insert({
+          email: values.email,
+          join_waitlist: values.joinWaitlist,
+          comments: values.comments || null,
+        });
+
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: 'Thank you!',
         description: 'We\'ve received your information and will be in touch soon.',
@@ -66,6 +78,15 @@ const Auth = () => {
     }
   };
 
+  const handleGoBack = () => {
+    // Go back to the previous page or home if no previous page
+    if (location.state?.from) {
+      navigate(location.state.from);
+    } else {
+      navigate(-1);
+    }
+  };
+
   if (user) {
     return <Navigate to="/" replace />;
   }
@@ -73,6 +94,18 @@ const Auth = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md space-y-8 bg-white p-8 shadow-lg rounded-lg">
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+
         <div className="text-center">
           <h1 className="text-3xl font-bold text-marketing-purple">Join the Waitlist</h1>
           <p className="mt-2 text-gray-600">Be the first to know when we launch</p>

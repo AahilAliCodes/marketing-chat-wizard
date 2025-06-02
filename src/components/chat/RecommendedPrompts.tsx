@@ -36,6 +36,20 @@ const recommendedPrompts: Record<string, RecommendedPrompt[]> = {
     { text: "Generate 10 blog post ideas for {website}", description: "Content ideas" },
     { text: "Write an email newsletter template for {website}", description: "Email marketing" }
   ],
+  'reddit': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
+    { text: "Find the best subreddits for my business", description: "Subreddit discovery" },
+    { text: "Write a Reddit post that doesn't sound like an ad", description: "Authentic posting" },
+    { text: "How do I build karma before promoting?", description: "Reddit strategy" },
+    { text: "Create a Reddit comment strategy", description: "Engagement strategy" }
+  ],
+  'general_marketing': [
+    { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
+    { text: "Create a social media content calendar", description: "Content planning" },
+    { text: "Write compelling email subject lines", description: "Email marketing" },
+    { text: "Develop a brand positioning strategy", description: "Brand strategy" },
+    { text: "Plan an influencer marketing campaign", description: "Influencer strategy" }
+  ],
   'default': [
     { text: "Make me a marketing plan", description: "Complete marketing strategy", isSpecial: true },
     { text: "Create a marketing plan for {website}", description: "Strategy planning" },
