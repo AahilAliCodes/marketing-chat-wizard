@@ -36,7 +36,8 @@ const Home = () => {
       
       const formattedUrl = lowercaseUrl.startsWith('http') ? lowercaseUrl : `https://${lowercaseUrl}`;
       
-      navigate('/dashboard', { 
+      // Navigate to Research page instead of Dashboard
+      navigate('/research', { 
         state: { 
           isAnalyzing: true,
           websiteUrl: formattedUrl 
