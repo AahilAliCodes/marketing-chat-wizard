@@ -1,4 +1,3 @@
-
 interface SessionData {
   [key: string]: any;
 }
@@ -6,6 +5,8 @@ interface SessionData {
 export class SessionManager {
   private static SESSION_KEY = 'blastari_session';
   private static SESSION_EXPIRY_HOURS = 24;
+  private static MAX_COOKIE_SIZE = 1500; // Reduced from 3000 to be more conservative
+  private static MAX_TOTAL_COOKIES = 10; // Limit total number of cookies
 
   // Generate a session ID if one doesn't exist
   static getSessionId(): string {
@@ -13,7 +14,7 @@ export class SessionManager {
     if (!sessionId) {
       sessionId = this.generateSessionId();
       localStorage.setItem(`${this.SESSION_KEY}_id`, sessionId);
-      // Also store in cookies for cross-tab consistency
+      // Only store session ID in cookies, not large data
       this.setCookie(`${this.SESSION_KEY}_id`, sessionId, this.SESSION_EXPIRY_HOURS);
     }
     return sessionId;
@@ -24,7 +25,7 @@ export class SessionManager {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Set session data with expiry (store in both localStorage and cookies)
+  // Set session data with expiry (prioritize localStorage over cookies)
   static setSessionData(key: string, data: any): void {
     const sessionData = {
       data,
@@ -34,16 +35,21 @@ export class SessionManager {
     
     const serializedData = JSON.stringify(sessionData);
     
-    // Store in localStorage
+    // Always store in localStorage
     localStorage.setItem(`${this.SESSION_KEY}_${key}`, serializedData);
     
-    // Store in cookies for persistence across sessions
-    this.setCookie(`${this.SESSION_KEY}_${key}`, serializedData, this.SESSION_EXPIRY_HOURS);
+    // Only store critical data in cookies and only if it's small enough
+    const isCriticalData = key.includes('session_id') || key.includes('user_id');
+    const isSmallEnough = serializedData.length < this.MAX_COOKIE_SIZE;
+    
+    if (isCriticalData && isSmallEnough) {
+      this.setCookie(`${this.SESSION_KEY}_${key}`, serializedData, this.SESSION_EXPIRY_HOURS);
+    }
   }
 
-  // Get session data (check both localStorage and cookies)
+  // Get session data (prioritize localStorage)
   static getSessionData(key: string): any {
-    // First try localStorage (faster access)
+    // First try localStorage (faster access and no size limits)
     const localData = localStorage.getItem(`${this.SESSION_KEY}_${key}`);
     if (localData) {
       try {
@@ -60,22 +66,25 @@ export class SessionManager {
       }
     }
 
-    // Fallback to cookies
-    const cookieData = this.getCookie(`${this.SESSION_KEY}_${key}`);
-    if (cookieData) {
-      try {
-        const parsed = JSON.parse(cookieData);
-        if (this.isDataValid(parsed)) {
-          // Restore to localStorage for faster future access
-          localStorage.setItem(`${this.SESSION_KEY}_${key}`, cookieData);
-          return parsed.data;
-        } else {
-          // Data expired, remove it
+    // Only fallback to cookies for critical data
+    const isCriticalData = key.includes('session_id') || key.includes('user_id');
+    if (isCriticalData) {
+      const cookieData = this.getCookie(`${this.SESSION_KEY}_${key}`);
+      if (cookieData) {
+        try {
+          const parsed = JSON.parse(cookieData);
+          if (this.isDataValid(parsed)) {
+            // Restore to localStorage for faster future access
+            localStorage.setItem(`${this.SESSION_KEY}_${key}`, cookieData);
+            return parsed.data;
+          } else {
+            // Data expired, remove it
+            this.removeSessionData(key);
+          }
+        } catch (error) {
+          console.error('Error parsing cookie session data:', error);
           this.removeSessionData(key);
         }
-      } catch (error) {
-        console.error('Error parsing cookie session data:', error);
-        this.removeSessionData(key);
       }
     }
 
@@ -98,12 +107,18 @@ export class SessionManager {
       }
     });
 
-    // Clear cookies
+    // Clear all session cookies
+    this.clearAllSessionCookies();
+  }
+
+  // Clear all session cookies efficiently
+  private static clearAllSessionCookies(): void {
     const cookies = document.cookie.split(';');
     cookies.forEach(cookie => {
       const [name] = cookie.split('=');
-      if (name.trim().startsWith(this.SESSION_KEY)) {
-        this.deleteCookie(name.trim());
+      const trimmedName = name.trim();
+      if (trimmedName.startsWith(this.SESSION_KEY)) {
+        this.deleteCookie(trimmedName);
       }
     });
   }
@@ -114,7 +129,10 @@ export class SessionManager {
     keys.forEach(key => {
       if (key.startsWith(`${this.SESSION_KEY}_chat_`) && !key.includes(currentWebsiteUrl)) {
         localStorage.removeItem(key);
-        this.deleteCookie(key);
+        // Only clear cookies for critical data
+        if (key.includes('session_id') || key.includes('user_id')) {
+          this.deleteCookie(key);
+        }
       }
     });
   }
@@ -125,35 +143,20 @@ export class SessionManager {
     return Date.now() < sessionData.expires;
   }
 
-  // Cookie helper methods with improved error handling
+  // Simplified cookie helper methods
   private static setCookie(name: string, value: string, hours: number): void {
     try {
       const expires = new Date();
       expires.setTime(expires.getTime() + (hours * 60 * 60 * 1000));
       
-      // Encode the value to handle special characters and large data
+      // Encode the value
       const encodedValue = encodeURIComponent(value);
       
-      // Split large cookies if needed (browsers have ~4KB limit per cookie)
-      const maxCookieSize = 3000; // Leave some room for other cookie attributes
-      
-      if (encodedValue.length > maxCookieSize) {
-        // Split into multiple cookies
-        const chunks = Math.ceil(encodedValue.length / maxCookieSize);
-        
-        // Store the number of chunks
-        document.cookie = `${name}_chunks=${chunks};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-        
-        // Store each chunk
-        for (let i = 0; i < chunks; i++) {
-          const start = i * maxCookieSize;
-          const end = Math.min(start + maxCookieSize, encodedValue.length);
-          const chunk = encodedValue.slice(start, end);
-          document.cookie = `${name}_${i}=${chunk};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-        }
-      } else {
-        // Single cookie
+      // Don't chunk cookies anymore to reduce header size
+      if (encodedValue.length <= this.MAX_COOKIE_SIZE) {
         document.cookie = `${name}=${encodedValue};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+      } else {
+        console.warn(`Cookie ${name} too large (${encodedValue.length} chars), storing in localStorage only`);
       }
     } catch (error) {
       console.error('Error setting cookie:', error);
@@ -162,39 +165,15 @@ export class SessionManager {
 
   private static getCookie(name: string): string | null {
     try {
-      // Check if it's a chunked cookie
-      const chunksMatch = document.cookie.match(new RegExp(`${name}_chunks=([^;]+)`));
-      
-      if (chunksMatch) {
-        // Reconstruct from chunks
-        const numChunks = parseInt(chunksMatch[1]);
-        let value = '';
-        
-        for (let i = 0; i < numChunks; i++) {
-          const chunkMatch = document.cookie.match(new RegExp(`${name}_${i}=([^;]+)`));
-          if (chunkMatch) {
-            value += chunkMatch[1];
-          } else {
-            // Missing chunk, data is corrupted
-            this.deleteCookie(name);
-            return null;
-          }
-        }
-        
-        return decodeURIComponent(value);
-      } else {
-        // Single cookie
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for (let i = 0; i < ca.length; i++) {
-          let c = ca[i];
-          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-          if (c.indexOf(nameEQ) === 0) {
-            return decodeURIComponent(c.substring(nameEQ.length, c.length));
-          }
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+          return decodeURIComponent(c.substring(nameEQ.length, c.length));
         }
       }
-      
       return null;
     } catch (error) {
       console.error('Error getting cookie:', error);
@@ -204,22 +183,7 @@ export class SessionManager {
 
   private static deleteCookie(name: string): void {
     try {
-      // Delete main cookie
       document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
-      
-      // Check and delete chunked cookies
-      const chunksMatch = document.cookie.match(new RegExp(`${name}_chunks=([^;]+)`));
-      if (chunksMatch) {
-        const numChunks = parseInt(chunksMatch[1]);
-        
-        // Delete chunk count cookie
-        document.cookie = `${name}_chunks=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
-        
-        // Delete each chunk
-        for (let i = 0; i < numChunks; i++) {
-          document.cookie = `${name}_${i}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
-        }
-      }
     } catch (error) {
       console.error('Error deleting cookie:', error);
     }
@@ -274,5 +238,44 @@ export class SessionManager {
   // Clear selected subreddit
   static clearSelectedSubreddit(): void {
     this.removeSessionData('selected_subreddit');
+  }
+
+  // Emergency cleanup method to reduce header size
+  static emergencyCleanup(): void {
+    console.log('Performing emergency session cleanup to reduce header size...');
+    
+    // Clear all non-critical cookies
+    const cookies = document.cookie.split(';');
+    cookies.forEach(cookie => {
+      const [name] = cookie.split('=');
+      const trimmedName = name.trim();
+      if (trimmedName.startsWith(this.SESSION_KEY) && 
+          !trimmedName.includes('session_id') && 
+          !trimmedName.includes('user_id')) {
+        this.deleteCookie(trimmedName);
+      }
+    });
+    
+    // Keep only recent localStorage data
+    const keys = Object.keys(localStorage);
+    const now = Date.now();
+    const oneHourAgo = now - (60 * 60 * 1000);
+    
+    keys.forEach(key => {
+      if (key.startsWith(this.SESSION_KEY)) {
+        try {
+          const data = localStorage.getItem(key);
+          if (data) {
+            const parsed = JSON.parse(data);
+            if (parsed.timestamp && parsed.timestamp < oneHourAgo) {
+              localStorage.removeItem(key);
+            }
+          }
+        } catch (error) {
+          // Remove corrupted data
+          localStorage.removeItem(key);
+        }
+      }
+    });
   }
 }
