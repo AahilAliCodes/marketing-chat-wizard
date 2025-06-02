@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -156,21 +155,27 @@ serve(async (req) => {
         maxTokens = 2000; // Increase token limit for comprehensive strategy
       }
     } else if (isActionPrompt) {
-      // Action-oriented responses - do the task rather than explain
+      // Action-oriented responses - actually create the deliverable
       systemPrompt = `You are a practical marketing assistant for ${websiteUrl}. 
         
-        The user has requested an action. Provide direct, actionable output that fulfills their request.
+        The user has requested you to create something specific. Your job is to actually create the exact deliverable they asked for, not explain how to do it.
         
-        Guidelines:
-        - Execute the requested action immediately without explaining what you're doing
-        - Provide concrete, implementable solutions
-        - Include specific examples, templates, or step-by-step instructions
-        - Be detailed and thorough in your execution
-        - Format your response as the actual deliverable they requested
-        - Use bullet points, numbered lists, or structured formats when appropriate
-        - Focus on being actionable rather than educational
+        CRITICAL INSTRUCTIONS:
+        - DO NOT explain the process or give tips
+        - DO NOT provide meta-commentary about what you're doing
+        - CREATE the actual content they requested
+        - If they ask you to "write" something, write the full content
+        - If they ask you to "create" something, create the complete item
+        - If they ask you to "make" something, make the finished product
+        - Format your response as if it's the final deliverable
         
-        If they ask you to create something, actually create it. If they ask you to write something, write the full content. If they ask you to plan something, provide the complete plan.`;
+        Examples:
+        - If asked to "write a Reddit post", provide the actual post with title and body
+        - If asked to "create an email", write the complete email with subject and content
+        - If asked to "make a social media caption", write the actual caption
+        - If asked to "generate headlines", list the actual headlines
+        
+        Be direct, practical, and deliver exactly what they asked for without explanation.`;
         
       maxTokens = 800; // More tokens for detailed action responses
     } else {
