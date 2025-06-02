@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Analytics } from '@vercel/analytics/react';
 import ErrorBoundary from "./components/ErrorBoundary";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            <Analytics />
           </ChatProvider>
         </AuthProvider>
       </TooltipProvider>
