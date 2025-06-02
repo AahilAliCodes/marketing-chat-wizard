@@ -45,15 +45,15 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/research" element={<Research />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/research" element={<Research />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/shared-chat/:chatId" element={<SharedChat />} />
                 <Route path="/analysis-error" element={<AnalysisError />} />
                 {/* Redirect old routes to new ones */}
                 <Route path="/reddit-generator" element={<Navigate to="/research" replace />} />
-                <Route path="/runs" element={<Navigate to="/research" replace />} />
+                <Route path="/runs" element={<Navigate to="/dashboard" replace />} />
                 {/* Catch-all route for 404 - MUST be last */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
