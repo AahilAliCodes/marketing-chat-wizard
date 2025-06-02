@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -45,6 +46,10 @@ serve(async (req) => {
 
     // Check if this is the special "Make me a marketing plan" prompt
     const isMarketingPlanRequest = userMessage.toLowerCase().includes("make me a marketing plan");
+
+    // Check if this is an action prompt (starts with action words)
+    const actionWords = ['create', 'make', 'do', 'give', 'write', 'build', 'develop', 'design', 'generate', 'produce', 'craft', 'compose', 'plan', 'outline', 'draft', 'prepare', 'setup', 'configure', 'implement', 'execute', 'launch', 'start', 'begin', 'initiate', 'establish', 'form', 'construct', 'formulate', 'devise'];
+    const isActionPrompt = actionWords.some(word => userMessage.toLowerCase().trim().startsWith(word));
 
     // Fetch recommendations from the database
     let query = supabase
@@ -150,23 +155,39 @@ serve(async (req) => {
         
         maxTokens = 2000; // Increase token limit for comprehensive strategy
       }
-    } else {
-      // Regular conversational prompt
-      systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
+    } else if (isActionPrompt) {
+      // Action-oriented responses - do the task rather than explain
+      systemPrompt = `You are a practical marketing assistant for ${websiteUrl}. 
         
-        Provide natural, conversational responses that directly answer the user's questions. 
+        The user has requested an action. Provide direct, actionable output that fulfills their request.
         
         Guidelines:
-        - Answer questions directly without always formatting as numbered lists
-        - Use step-by-step formats only when the user specifically asks for steps or a process
-        - Be conversational and personable in your tone
-        - Keep responses concise but informative (3-5 sentences unless more detail is needed)
-        - Provide specific, actionable advice tailored to their website
-        - Use bullet points sparingly and only when listing multiple related items
-        - Focus on being helpful rather than overly structured
+        - Execute the requested action immediately without explaining what you're doing
+        - Provide concrete, implementable solutions
+        - Include specific examples, templates, or step-by-step instructions
+        - Be detailed and thorough in your execution
+        - Format your response as the actual deliverable they requested
+        - Use bullet points, numbered lists, or structured formats when appropriate
+        - Focus on being actionable rather than educational
         
-        When appropriate, mention relevant campaign data, but don't just recite statistics. 
-        Explain the practical implications and how to act on the information.`;
+        If they ask you to create something, actually create it. If they ask you to write something, write the full content. If they ask you to plan something, provide the complete plan.`;
+        
+      maxTokens = 800; // More tokens for detailed action responses
+    } else {
+      // Question-oriented responses - short and informative
+      systemPrompt = `You are a friendly marketing assistant for ${websiteUrl}. 
+        
+        The user has asked a question. Provide a concise, informative response.
+        
+        Guidelines:
+        - Answer questions directly in 5-6 sentences maximum
+        - Be conversational and personable in your tone
+        - Provide specific, actionable advice when possible
+        - Focus on being helpful and informative
+        - Don't use lengthy explanations or step-by-step processes unless specifically asked
+        - Get straight to the point while being thorough
+        
+        When appropriate, mention relevant campaign data, but keep responses concise and focused.`;
     }
 
     // Call OpenAI API with the recommendations and user message
