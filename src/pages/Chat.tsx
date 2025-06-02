@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -268,20 +267,20 @@ User Question: ${inputMessage}`;
   const getExamplePrompts = () => {
     if (isRedditMode) {
       return [
+        "Make me a marketing plan",
         "Find the best subreddits for my business",
         "Write a Reddit post that doesn't sound like an ad",
         "How do I build karma before promoting?",
         "Create a Reddit comment strategy",
-        "What are Reddit's self-promotion rules?",
         "Generate post titles that get upvotes"
       ];
     } else {
       return [
+        "Make me a marketing plan",
         "Create a social media content calendar",
         "Write compelling email subject lines",
         "Develop a brand positioning strategy",
         "Plan an influencer marketing campaign",
-        "Create a customer retention strategy",
         "Design a lead generation funnel"
       ];
     }
@@ -366,7 +365,11 @@ User Question: ${inputMessage}`;
                         <Button
                           key={index}
                           variant="outline"
-                          className="text-left h-auto p-3 hover:bg-marketing-purple/5 hover:border-marketing-purple"
+                          className={`text-left h-auto p-3 hover:border-marketing-purple ${
+                            prompt === "Make me a marketing plan" 
+                              ? 'bg-green-500 border-green-600 text-white hover:bg-green-600' 
+                              : 'hover:bg-marketing-purple/5'
+                          }`}
                           onClick={() => handleExamplePrompt(prompt)}
                         >
                           {prompt}
@@ -440,7 +443,11 @@ User Question: ${inputMessage}`;
                       key={index}
                       variant="ghost"
                       size="sm"
-                      className="flex-shrink-0 text-xs h-7 px-2 hover:bg-marketing-purple/10"
+                      className={`flex-shrink-0 text-xs h-7 px-2 ${
+                        prompt === "Make me a marketing plan" 
+                          ? 'bg-green-500 text-white hover:bg-green-600' 
+                          : 'hover:bg-marketing-purple/10'
+                      }`}
                       onClick={() => handleExamplePrompt(prompt)}
                     >
                       {prompt}
