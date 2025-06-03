@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Topbar from '@/components/Topbar';
 import PostRecommender from '@/components/PostRecommender';
@@ -322,32 +323,24 @@ const Research = () => {
             </Card>
           </div>
 
-          {/* Karma Distribution */}
+          {/* Top Keywords - moved to where Karma Distribution was */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart className="h-5 w-5 text-purple-600" />
-                Post Karma Distribution
+                <Eye className="h-5 w-5 text-cyan-600" />
+                Top Keywords in Titles
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">{deepAnalytics.karmaDistribution.low}</div>
-                  <p className="text-sm text-gray-600">Low (&lt;10)</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">{deepAnalytics.karmaDistribution.medium}</div>
-                  <p className="text-sm text-gray-600">Medium (10-99)</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{deepAnalytics.karmaDistribution.high}</div>
-                  <p className="text-sm text-gray-600">High (100-999)</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{deepAnalytics.karmaDistribution.viral}</div>
-                  <p className="text-sm text-gray-600">Viral (1000+)</p>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {deepAnalytics.topKeywords.slice(0, 20).map((keyword, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-gray-100 text-sm rounded-full border"
+                  >
+                    {keyword.word} ({keyword.count})
+                  </span>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -400,24 +393,32 @@ const Research = () => {
             </Card>
           </div>
 
-          {/* Top Keywords */}
+          {/* Karma Distribution - moved to where Top Keywords was */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5 text-cyan-600" />
-                Top Keywords in Titles
+                <BarChart className="h-5 w-5 text-purple-600" />
+                Post Karma Distribution
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {deepAnalytics.topKeywords.slice(0, 20).map((keyword, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-gray-100 text-sm rounded-full border"
-                  >
-                    {keyword.word} ({keyword.count})
-                  </span>
-                ))}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{deepAnalytics.karmaDistribution.low}</div>
+                  <p className="text-sm text-gray-600">Low (&lt;10)</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">{deepAnalytics.karmaDistribution.medium}</div>
+                  <p className="text-sm text-gray-600">Medium (10-99)</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{deepAnalytics.karmaDistribution.high}</div>
+                  <p className="text-sm text-gray-600">High (100-999)</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{deepAnalytics.karmaDistribution.viral}</div>
+                  <p className="text-sm text-gray-600">Viral (1000+)</p>
+                </div>
               </div>
             </CardContent>
           </Card>
