@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -371,11 +370,9 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         
         setSubredditData(finalAnalytics);
         
-        // Add new subreddits to exclusion list for future regenerations
+        // Add new subreddits to exclusion list (both for initial generation and regeneration)
         const newSubredditNames = finalAnalytics.map(s => s.subreddit);
-        if (forceRegenerate) {
-          addToExcluded(newSubredditNames);
-        }
+        addToExcluded(newSubredditNames);
         
         // Cache in session using dashboard-specific method
         SessionManager.setDashboardAnalytics(websiteUrl, finalAnalytics);
