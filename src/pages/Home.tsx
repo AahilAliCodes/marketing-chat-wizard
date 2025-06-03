@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Sparkles } from 'lucide-react';
+import { Send, Sparkles, Globe, MessageSquare, BarChart3, FileText, TrendingUp, Users, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -106,6 +107,110 @@ const Home = () => {
             >
               <Send className="h-6 w-6" />
             </button>
+          </div>
+        </div>
+
+        {/* Spacing */}
+        <div className="py-16"></div>
+
+        {/* Big Number */}
+        <div className="mb-16">
+          <div className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-marketing-purple to-marketing-darkPurple mb-4">
+            $1,000+
+          </div>
+          <p className="text-2xl text-gray-600 font-medium">saved in Reddit marketing</p>
+        </div>
+
+        {/* How It Works Section */}
+        <div className="w-full max-w-7xl">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">How It Works</h2>
+          <p className="text-xl text-gray-600 mb-16 max-w-3xl mx-auto">
+            Transform your business into a Reddit marketing machine in just a few simple steps
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Card 1: Enter URL */}
+            <Card className="border-2 border-gray-200 hover:border-marketing-purple hover:shadow-modern-xl transition-all duration-300 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Globe className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">1. Enter Your URL</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-gray-600 mb-4">Simply paste your website URL above to get started</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-500">
+                  https://yoursite.com
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card 2: AI Generated Content */}
+            <Card className="border-2 border-gray-200 hover:border-marketing-purple hover:shadow-modern-xl transition-all duration-300 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">2. Get AI Content</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-gray-600 mb-4">AI generates relevant posts and comments for your business</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-left">
+                  <div className="text-xs text-gray-500 mb-2">r/entrepreneur</div>
+                  <div className="text-sm font-medium text-gray-800 mb-2">💡 Business Growth Tips</div>
+                  <div className="text-xs text-gray-600">"Great insights on scaling..."</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card 3: Deep Analytics */}
+            <Card className="border-2 border-gray-200 hover:border-marketing-purple hover:shadow-modern-xl transition-all duration-300 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">3. Deep Analytics</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-gray-600 mb-4">Get detailed insights about subreddit performance</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-600">Top Keywords</span>
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">startup</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">growth</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card 4: Reddit Posts */}
+            <Card className="border-2 border-gray-200 hover:border-marketing-purple hover:shadow-modern-xl transition-all duration-300 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">4. Ready Posts</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-gray-600 mb-4">Get perfectly crafted Reddit posts ready to publish</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm font-medium text-gray-800">Success Story</span>
+                  </div>
+                  <div className="text-xs text-gray-600">"How I grew my startup from 0 to 100k users..."</div>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      2.5k upvotes
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
