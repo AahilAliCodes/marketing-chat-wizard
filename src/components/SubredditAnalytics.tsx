@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { RefreshCw, ArrowRight, TrendingUp, Users, MessageSquare, Shield, Info, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -77,7 +77,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
   const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
   const [generationStep, setGenerationStep] = useState<string>('');
   const [postsError, setPostsError] = useState<string>('');
-  const [excludedSubreddits, setExcludedSubreddits] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -96,34 +95,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     
     console.log(`Filtered ${subreddits.length} -> ${unique.length} unique subreddits for display`);
     return unique;
-  };
-
-  // Load excluded subreddits from session
-  const loadExcludedSubreddits = () => {
-    const excluded = SessionManager.getSessionData(`excluded_subreddits_${websiteUrl}`) || [];
-    setExcludedSubreddits(excluded);
-    return excluded;
-  };
-
-  // Save excluded subreddits to session
-  const saveExcludedSubreddits = (excluded: string[]) => {
-    SessionManager.setSessionData(`excluded_subreddits_${websiteUrl}`, excluded);
-    setExcludedSubreddits(excluded);
-  };
-
-  // Add subreddits to exclusion list
-  const addToExcluded = (subreddits: string[]) => {
-    const currentExcluded = loadExcludedSubreddits();
-    const newExcluded = [...new Set([...currentExcluded, ...subreddits.map(s => s.toLowerCase())])];
-    saveExcludedSubreddits(newExcluded);
-    console.log('Updated excluded subreddits:', newExcluded);
-  };
-
-  // Reset exclusion list
-  const resetExcludedSubreddits = () => {
-    SessionManager.removeSessionData(`excluded_subreddits_${websiteUrl}`);
-    setExcludedSubreddits([]);
-    console.log('Reset excluded subreddits list');
   };
 
   const fetchStoredSubredditAnalytics = async () => {
@@ -274,23 +245,22 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     setIsLoadingAnalytics(true);
     if (forceRegenerate) {
       setIsRegenerating(true);
-      setGenerationStep('Finding new subreddits...');
+      setGenerationStep('Finding high-quality subreddits...');
     }
 
     try {
       console.log('Generating new subreddit analytics for:', websiteUrl);
       
-      // Get excluded subreddits for regeneration
-      const currentExcluded = loadExcludedSubreddits();
-      console.log('Excluding subreddits:', currentExcluded);
+      // Get currently displayed subreddits to exclude them from regeneration
+      const excludeSubreddits = forceRegenerate ? subredditData.map(s => s.subreddit) : [];
       
-      setGenerationStep('Analyzing new subreddit recommendations...');
+      setGenerationStep('Analyzing subreddit recommendations...');
       
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-subreddits', {
         body: { 
           websiteUrl,
-          forceRegenerate: true,
-          excludeSubreddits: currentExcluded
+          forceRegenerate,
+          excludeSubreddits
         }
       });
       
@@ -299,7 +269,7 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
       }
 
       if (analysisData?.recommendations && analysisData.recommendations.length > 0) {
-        console.log(`Received ${analysisData.recommendations.length} new subreddit recommendations`);
+        console.log(`Received ${analysisData.recommendations.length} subreddit recommendations`);
         
         setGenerationStep('Calculating engagement metrics...');
         
@@ -370,21 +340,17 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
         
         setSubredditData(finalAnalytics);
         
-        // Add new subreddits to exclusion list (both for initial generation and regeneration)
-        const newSubredditNames = finalAnalytics.map(s => s.subreddit);
-        addToExcluded(newSubredditNames);
-        
         // Cache in session using dashboard-specific method
         SessionManager.setDashboardAnalytics(websiteUrl, finalAnalytics);
         
         if (forceRegenerate) {
           toast({
             title: 'Success',
-            description: `Generated ${finalAnalytics.length} completely new subreddit analytics`,
+            description: 'New unique subreddit analytics have been generated',
           });
         }
       } else {
-        throw new Error('No new subreddit recommendations could be generated');
+        throw new Error('No subreddit recommendations received from analysis');
       }
     } catch (err: any) {
       console.error('Error fetching subreddit analytics:', err);
@@ -473,9 +439,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
 
   useEffect(() => {
     if (websiteUrl) {
-      // Load excluded subreddits on component mount
-      loadExcludedSubreddits();
-      
       fetchStoredSubredditAnalytics().then(hasData => {
         if (!hasData) {
           fetchSubredditAnalytics();
@@ -498,26 +461,6 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     // Clear cached data using dashboard-specific methods
     SessionManager.clearDashboardData(websiteUrl);
     
-    await fetchSubredditAnalytics(true);
-    if (subredditData.length > 0) {
-      await fetchRedditPosts(true);
-    }
-  };
-
-  const handleReset = async () => {
-    // Reset exclusion list
-    resetExcludedSubreddits();
-    
-    // Clear cached data
-    SessionManager.clearDashboardData(websiteUrl);
-    
-    // Show confirmation
-    toast({
-      title: 'Reset Complete',
-      description: 'Exclusion list cleared. All subreddits can now be considered again.',
-    });
-    
-    // Regenerate with fresh slate
     await fetchSubredditAnalytics(true);
     if (subredditData.length > 0) {
       await fetchRedditPosts(true);
@@ -702,30 +645,14 @@ const SubredditAnalytics: React.FC<SubredditAnalyticsProps> = ({ websiteUrl }) =
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 font-helvetica">Reddit Analytics Dashboard</h1>
-        <div className="flex items-center gap-3">
-          {excludedSubreddits.length > 0 && (
-            <span className="text-sm text-gray-500 font-helvetica">
-              {excludedSubreddits.length} subreddits excluded
-            </span>
-          )}
-          <Button
-            onClick={handleReset}
-            disabled={isLoadingAnalytics || isRegenerating}
-            variant="outline"
-            className="flex items-center gap-2 font-helvetica"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reset
-          </Button>
-          <Button
-            onClick={handleRegenerate}
-            disabled={isLoadingAnalytics || isRegenerating}
-            className="flex items-center gap-2 font-helvetica"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-            Regenerate
-          </Button>
-        </div>
+        <Button
+          onClick={handleRegenerate}
+          disabled={isLoadingAnalytics || isRegenerating}
+          className="flex items-center gap-2 font-helvetica"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+          Regenerate
+        </Button>
       </div>
 
       {/* Subreddit Analytics Section with Enhanced Loading */}

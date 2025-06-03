@@ -1,4 +1,3 @@
-
 interface SessionData {
   [key: string]: any;
 }
@@ -155,26 +154,6 @@ export class SessionManager {
   static clearDashboardData(websiteUrl: string): void {
     this.removeSessionData(`dashboard_analytics_${websiteUrl}`);
     this.removeSessionData(`dashboard_posts_${websiteUrl}`);
-  }
-
-  // Exclusion list management methods
-  static setExcludedSubreddits(websiteUrl: string, excludedList: string[]): void {
-    this.setSessionData(`excluded_subreddits_${websiteUrl}`, excludedList);
-  }
-
-  static getExcludedSubreddits(websiteUrl: string): string[] {
-    return this.getSessionData(`excluded_subreddits_${websiteUrl}`) || [];
-  }
-
-  static addExcludedSubreddits(websiteUrl: string, newSubreddits: string[]): string[] {
-    const current = this.getExcludedSubreddits(websiteUrl);
-    const updated = [...new Set([...current, ...newSubreddits.map(s => s.toLowerCase())])];
-    this.setExcludedSubreddits(websiteUrl, updated);
-    return updated;
-  }
-
-  static resetExcludedSubreddits(websiteUrl: string): void {
-    this.removeSessionData(`excluded_subreddits_${websiteUrl}`);
   }
 
   // Get all session keys (for debugging)
