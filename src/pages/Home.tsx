@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Sparkles } from 'lucide-react';
+import { Send, Sparkles, Globe, MessageSquare, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Home = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -88,7 +89,7 @@ const Home = () => {
           Turn Reddit threads into growth channels with AI-crafted posts. Start for free — no credit card required.
         </p>
         
-        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-modern-xl border border-gray-100 p-8 mb-8">
+        <div className="w-full max-w-4xl bg-white rounded-2xl shadow-modern-xl border border-gray-100 p-8 mb-16">
           <div className="bg-gray-50 border border-gray-200 rounded-xl flex items-center p-4 focus-within:ring-2 focus-within:ring-marketing-purple focus-within:border-marketing-purple transition-all duration-200 hover:shadow-modern">
             <input 
               type="text" 
@@ -106,6 +107,66 @@ const Home = () => {
             >
               <Send className="h-6 w-6" />
             </button>
+          </div>
+        </div>
+
+        {/* Savings Section */}
+        <div className="mb-16">
+          <div className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-green-600 mb-4">
+            $1,000+
+          </div>
+          <p className="text-xl text-gray-600 font-medium">saved in Reddit marketing</p>
+        </div>
+
+        {/* How It Works Cards */}
+        <div className="w-full max-w-6xl">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">How it works</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Card 1 */}
+            <Card className="border-2 hover:shadow-modern-lg transition-all duration-200 group">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200 transition-all duration-200">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl mb-4 mx-auto">
+                  <Globe className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-xl font-semibold text-center">Enter your URL above</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <p className="text-gray-600 text-center leading-relaxed">
+                  Simply paste your business website URL into the search bar and let our AI analyze your content and target audience.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card 2 */}
+            <Card className="border-2 hover:shadow-modern-lg transition-all duration-200 group">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 group-hover:from-purple-100 group-hover:to-purple-200 transition-all duration-200">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-marketing-purple to-marketing-darkPurple rounded-xl mb-4 mx-auto">
+                  <MessageSquare className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-xl font-semibold text-center">Get AI generated comments and posts</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <p className="text-gray-600 text-center leading-relaxed">
+                  Our AI creates engaging Reddit posts and authentic comments tailored to your business and relevant subreddits.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card 3 */}
+            <Card className="border-2 hover:shadow-modern-lg transition-all duration-200 group">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 group-hover:from-green-100 group-hover:to-green-200 transition-all duration-200">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl mb-4 mx-auto">
+                  <BarChart3 className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-xl font-semibold text-center">Deep Analytics</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <p className="text-gray-600 text-center leading-relaxed">
+                  Access detailed subreddit analytics, engagement metrics, and optimal posting times to maximize your reach.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
