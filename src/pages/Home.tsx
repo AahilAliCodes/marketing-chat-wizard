@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Sparkles, Globe, MessageSquare, BarChart3, FileText, TrendingUp, Users, Award } from 'lucide-react';
@@ -110,11 +109,11 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Spacing */}
-        <div className="py-16"></div>
+        {/* Increased Spacing between URL input and Big Number */}
+        <div className="py-24"></div>
 
         {/* Big Number */}
-        <div className="mb-16">
+        <div className="mb-24">
           <div className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-marketing-purple to-marketing-darkPurple mb-4">
             $1,000+
           </div>
